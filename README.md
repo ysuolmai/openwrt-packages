@@ -22,6 +22,8 @@ path-specific commit, synchronization strategy, and local changes.
 
 The HomeProxy upstream comparison and synchronization policy are documented in
 [`docs/homeproxy-upstreams.md`](docs/homeproxy-upstreams.md).
+Persistent project context for future maintenance sessions is in
+[`docs/project-state.md`](docs/project-state.md).
 
 ## Updating
 
