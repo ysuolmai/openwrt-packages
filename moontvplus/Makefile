@@ -46,12 +46,13 @@ define Build/Compile
 	cd $(PKG_BUILD_DIR) && \
 		HOME=$(PKG_BUILD_DIR)/.pnpm-home \
 		CI=1 \
-		$(PNPM) install --frozen-lockfile
+		$(PNPM) install --frozen-lockfile --ignore-scripts --network-concurrency=8
 	cd $(PKG_BUILD_DIR) && \
 		HOME=$(PKG_BUILD_DIR)/.pnpm-home \
 		CI=1 \
 		DOCKER_ENV=true \
 		BUILD_TARGET=openwrt \
+		NODE_OPTIONS=--max-old-space-size=3072 \
 		$(PNPM) run build
 	rm -rf $(BETTER_SQLITE3_DIR)/build
 	cd $(BETTER_SQLITE3_DIR) && \
