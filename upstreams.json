@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "name": "frp",
+      "path": "frp",
+      "upstreams": [
+        {
+          "role": "openwrt-packaging",
+          "repository": "https://github.com/kenzok8/jell",
+          "branch": "main",
+          "path": "frp",
+          "commit": "e7515db777ff4be622f79501dff8d88e3aef4a84"
+        },
+        {
+          "role": "application-source",
+          "repository": "https://github.com/fatedier/frp",
+          "branch": "dev",
+          "path": "",
+          "commit": null,
+          "tracking": "releases",
+          "version": "v0.66.0"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Install the init scripts and UCI defaults from the binary packages",
+        "Run as root to match the target firmware",
+        "Support an enabled UCI option and default both services to disabled"
+      ]
+    },
+    {
+      "name": "luci-app-frpc",
+      "path": "luci-app-frpc",
+      "upstreams": [
+        {
+          "role": "openwrt-packaging",
+          "repository": "https://github.com/immortalwrt/luci",
+          "branch": "master",
+          "path": "applications/luci-app-frpc",
+          "commit": "d2afa60ef40155022199a62fbd8e6713a7975c9c"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Add a persistent service enable switch",
+        "Detect running state without assuming a fixed procd instance name"
+      ]
+    },
+    {
+      "name": "luci-app-frps",
+      "path": "luci-app-frps",
+      "upstreams": [
+        {
+          "role": "openwrt-packaging",
+          "repository": "https://github.com/immortalwrt/luci",
+          "branch": "master",
+          "path": "applications/luci-app-frps",
+          "commit": "d2afa60ef40155022199a62fbd8e6713a7975c9c"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Add a persistent service enable switch",
+        "Detect running state without assuming a fixed procd instance name"
+      ]
+    }
+  ]
+}

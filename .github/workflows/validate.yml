@@ -1,0 +1,21 @@
+name: Validate packages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate metadata and scripts
+        run: ./scripts/validate.sh
+      - name: Validate LuCI JavaScript syntax
+        run: |
+          node --check luci-app-frpc/htdocs/luci-static/resources/view/frpc.js
+          node --check luci-app-frps/htdocs/luci-static/resources/view/frps.js
