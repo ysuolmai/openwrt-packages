@@ -1,0 +1,110 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Run MoonTVPlus directly under procd without Docker. Apply changes before restarting the service."
+msgstr "无需 Docker，直接由 procd 运行 MoonTVPlus。重启服务前请先应用配置。"
+
+msgid "Service status"
+msgstr "服务状态"
+
+msgid "Service action failed"
+msgstr "服务操作失败"
+
+msgid "Service action completed"
+msgstr "服务操作已完成"
+
+msgid "Open MoonTVPlus"
+msgstr "打开 MoonTVPlus"
+
+msgid "Basic settings"
+msgstr "基本设置"
+
+msgid "Enable service"
+msgstr "启用服务"
+
+msgid "Listen port"
+msgstr "监听端口"
+
+msgid "Site name"
+msgstr "站点名称"
+
+msgid "Administrator username"
+msgstr "管理员用户名"
+
+msgid "Administrator password"
+msgstr "管理员密码"
+
+msgid "The service refuses to start while this password is empty."
+msgstr "管理员密码为空时服务不会启动。"
+
+msgid "Restart after a crash"
+msgstr "崩溃后自动重启"
+
+msgid "Storage"
+msgstr "存储"
+
+msgid "Storage backend"
+msgstr "存储后端"
+
+msgid "Local SQLite"
+msgstr "本地 SQLite"
+
+msgid "Data directory"
+msgstr "数据目录"
+
+msgid "Use persistent external storage on devices with limited flash endurance."
+msgstr "闪存耐久度有限的设备建议使用持久化外部存储。"
+
+msgid "Redis URL"
+msgstr "Redis 地址"
+
+msgid "Kvrocks URL"
+msgstr "Kvrocks 地址"
+
+msgid "Upstash URL"
+msgstr "Upstash 地址"
+
+msgid "Upstash token"
+msgstr "Upstash 令牌"
+
+msgid "Features"
+msgstr "功能"
+
+msgid "Enable TV mode"
+msgstr "启用 TV 模式"
+
+msgid "Enable server downloads"
+msgstr "启用服务器离线下载"
+
+msgid "Download directory"
+msgstr "下载目录"
+
+msgid "Enable watch room"
+msgstr "启用观影室"
+
+msgid "Watch room server"
+msgstr "观影室服务器"
+
+msgid "Internal"
+msgstr "内置"
+
+msgid "External"
+msgstr "外部"
+
+msgid "External watch room URL"
+msgstr "外部观影室地址"
+
+msgid "External watch room token"
+msgstr "外部观影室令牌"
+
+msgid "Cron API password"
+msgstr "定时任务 API 密码"
+
+msgid "Leave empty to use the MoonTVPlus default."
+msgstr "留空使用 MoonTVPlus 默认值。"
+
+msgid "MoonTVPlus log"
+msgstr "MoonTVPlus 日志"
+
+msgid "No log entries."
+msgstr "暂无日志。"

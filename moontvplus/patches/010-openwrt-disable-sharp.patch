@@ -1,0 +1,26 @@
+--- a/next.config.js
++++ b/next.config.js
+@@ -8,6 +8,7 @@ const path = require('path');
+ const isCloudflare = process.env.CF_PAGES === '1' || process.env.BUILD_TARGET === 'cloudflare';
+ const isEdgeOne = process.env.EDGEONE_PAGES === '1' || process.env.BUILD_TARGET === 'edgeone';
+ const isEdgeBuild = isCloudflare || isEdgeOne;
++const isOpenWrt = process.env.BUILD_TARGET === 'openwrt';
+ 
+ const optimizedPackageImports = [
+   '@dnd-kit/core',
+@@ -136,6 +137,15 @@ const createNextConfig = (phase) => {
+       });
+     }
+ 
++    // libvips is intentionally omitted from the OpenWrt package. The only
++    // sharp call is optional manga-cover compression in the cron handler.
++    if (isOpenWrt) {
++      config.resolve.alias = {
++        ...config.resolve.alias,
++        sharp: path.resolve(__dirname, 'src/lib/cloudflare-shims/node-unsupported.ts'),
++      };
++    }
++
+     // Exclude better-sqlite3, D1, and Postgres modules from client-side bundle
+     if (!isServer) {
+       config.externals = config.externals || [];

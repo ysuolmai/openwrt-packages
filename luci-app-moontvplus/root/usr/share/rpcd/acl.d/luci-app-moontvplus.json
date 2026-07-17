@@ -1,0 +1,19 @@
+{
+	"luci-app-moontvplus": {
+		"description": "Grant access to MoonTVPlus management",
+		"read": {
+			"uci": [ "moontvplus" ],
+			"ubus": {
+				"luci.moontvplus": [ "status", "logs" ],
+				"service": [ "list" ]
+			}
+		},
+		"write": {
+			"uci": [ "moontvplus" ],
+			"ubus": {
+				"luci.moontvplus": [ "control" ],
+				"uci": [ "apply" ]
+			}
+		}
+	}
+}

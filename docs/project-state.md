@@ -20,6 +20,8 @@ The collection currently owns:
 - `luci-app-adguardhome`
 - `luci-theme-shadcn`
 - `luci-app-homeproxy`
+- `moontvplus`
+- `luci-app-moontvplus`
 
 Detailed upstream commits and local changes are stored in `upstreams.json`.
 The standalone `ysuolmai` repositories remain available as history but are no
@@ -59,6 +61,12 @@ See `docs/homeproxy-upstreams.md` for the update policy.
 Do not let later `jell` imports overwrite `frp`, DDNS-Go, or their LuCI apps.
 The VIKINGYFY package bundle may contain another HomeProxy copy; conflict
 cleanup before cloning this collection must remove it.
+
+MoonTVPlus is built from a pinned upstream commit as a native Node.js 24
+standalone application. It runs under procd without Docker. The service package
+cross-compiles `better-sqlite3` for the OpenWrt target and omits optional
+`sharp`-based manga cover compression. `luci-app-moontvplus` owns its UCI,
+service control and log interface.
 
 ## Build verification
 

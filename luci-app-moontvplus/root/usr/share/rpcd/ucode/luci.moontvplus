@@ -1,0 +1,49 @@
+#!/usr/bin/ucode
+
+'use strict';
+
+import { popen } from 'fs';
+
+function run(command) {
+	let pipe = popen(`${command} 2>&1`);
+	if (!pipe)
+		return { status: 127, output: 'unable to execute command' };
+	let output = pipe.read('all') ?? '';
+	let status = pipe.close();
+	return { status: status, output: output };
+}
+
+const methods = {
+	status: {
+		call: function() {
+			let result = run('/etc/init.d/moontvplus running');
+			let port = +run("uci -q get moontvplus.main.port").output.trim() || 3000;
+			return { running: result.status === 0, port: port };
+		}
+	},
+
+	control: {
+		args: { action: '' },
+		call: function(request) {
+			let action = request.args.action;
+			if (action !== 'start' && action !== 'stop' && action !== 'restart')
+				return { success: false, error: 'unsupported service action' };
+			let result = run(`/etc/init.d/moontvplus ${action}`);
+			return result.status === 0
+				? { success: true }
+				: { success: false, error: result.output || 'service action failed' };
+		}
+	},
+
+	logs: {
+		args: { limit: 300 },
+		call: function(request) {
+			let limit = +request.args.limit || 300;
+			limit = min(max(limit, 20), 1000);
+			let result = run(`logread -l ${limit} -e moontvplus`);
+			return { logs: result.output };
+		}
+	}
+};
+
+return { 'luci.moontvplus': methods };

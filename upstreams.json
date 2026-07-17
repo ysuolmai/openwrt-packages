@@ -204,6 +204,43 @@
         "Add a validated and configurable URL for the main URLTest outbound",
         "Default URLTest to the Google generate_204 endpoint"
       ]
+    },
+    {
+      "name": "moontvplus",
+      "path": "moontvplus",
+      "upstreams": [
+        {
+          "role": "application-source",
+          "repository": "https://github.com/ysuolmai/MoonTVPlus",
+          "branch": "main",
+          "path": "",
+          "commit": "720db22bea9f9798ecc00cc2c7c0127813f5e256"
+        }
+      ],
+      "sync_strategy": "pinned-source-build",
+      "local_changes": [
+        "Build the Next.js standalone application for native procd deployment without Docker",
+        "Cross-compile better-sqlite3 for the OpenWrt target ABI",
+        "Disable optional sharp-based manga cover compression to avoid shipping libvips"
+      ]
+    },
+    {
+      "name": "luci-app-moontvplus",
+      "path": "luci-app-moontvplus",
+      "upstreams": [
+        {
+          "role": "managed-application",
+          "repository": "https://github.com/ysuolmai/MoonTVPlus",
+          "branch": "main",
+          "path": "",
+          "commit": "720db22bea9f9798ecc00cc2c7c0127813f5e256"
+        }
+      ],
+      "sync_strategy": "self-maintained",
+      "local_changes": [
+        "Provide native JavaScript LuCI configuration, service control and log viewing",
+        "Map UCI settings to the MoonTVPlus environment through a narrow rpcd interface"
+      ]
     }
   ]
 }
