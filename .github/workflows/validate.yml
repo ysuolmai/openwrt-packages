@@ -15,7 +15,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate metadata and scripts
         run: ./scripts/validate.sh
-      - name: Validate LuCI JavaScript syntax
+      - name: Validate translations
         run: |
-          node --check luci-app-frpc/htdocs/luci-static/resources/view/frpc.js
-          node --check luci-app-frps/htdocs/luci-static/resources/view/frps.js
+          sudo apt-get update
+          sudo apt-get install -y gettext
+          find . -type f -name '*.po' -exec msgfmt --check --check-format -o /dev/null {} \;

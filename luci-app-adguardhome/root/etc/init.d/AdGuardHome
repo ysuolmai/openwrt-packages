@@ -1,0 +1,288 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: Apache-2.0
+
+USE_PROCD=1
+START=95
+STOP=10
+
+CONFIG=AdGuardHome
+SECTION=AdGuardHome
+RUN_DIR=/var/run/adguardhome
+
+EXTRA_COMMANDS="status update"
+EXTRA_HELP="	status	Show service and DNS integration state
+	update	Start a core update"
+
+log() {
+	logger -t adguardhome "$*"
+}
+
+is_uint() {
+	case "$1" in ''|*[!0-9]*) return 1;; esac
+	[ "$1" -ge 1 ] && [ "$1" -le 65535 ]
+}
+
+yaml_dns_port() {
+	[ -f "$1" ] || return 1
+	awk '
+		/^dns:[[:space:]]*$/ { dns=1; next }
+		dns && /^[^[:space:]]/ { exit }
+		dns && /^[[:space:]]+port:[[:space:]]*/ {
+			sub(/^[^:]+:[[:space:]]*/, ""); gsub(/[[:space:]#].*$/, ""); print; exit
+		}
+	' "$1"
+}
+
+set_yaml_dns_port() {
+	local file="$1" port="$2" tmp
+	is_uint "$port" || return 1
+	[ -f "$file" ] || return 1
+	tmp="${file}.adguardhome.tmp"
+	awk -v port="$port" '
+		BEGIN { dns=0; changed=0 }
+		/^dns:[[:space:]]*$/ { dns=1; print; next }
+		dns && /^[^[:space:]]/ { dns=0 }
+		dns && !changed && /^[[:space:]]+port:[[:space:]]*/ {
+			match($0, /^[[:space:]]*/); print substr($0, 1, RLENGTH) "port: " port; changed=1; next
+		}
+		{ print }
+		END { if (!changed) exit 2 }
+	' "$file" >"$tmp" || { rm -f "$tmp"; return 1; }
+	chmod 600 "$tmp"
+	mv -f "$tmp" "$file"
+}
+
+dnsmasq_restart() {
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1
+}
+
+firewall_reload() {
+	/etc/init.d/firewall reload >/dev/null 2>&1
+}
+
+restore_dnsmasq_upstream() {
+	local port old_noresolv old_resolvfile
+	config_get port "$SECTION" managed_port ""
+	[ -n "$port" ] && uci -q del_list dhcp.@dnsmasq[0].server="127.0.0.1#$port"
+	config_get old_noresolv "$SECTION" saved_noresolv ""
+	config_get old_resolvfile "$SECTION" saved_resolvfile ""
+	if [ "$old_noresolv" = "__unset__" ]; then
+		uci -q delete dhcp.@dnsmasq[0].noresolv
+	elif [ -n "$old_noresolv" ]; then
+		uci -q set dhcp.@dnsmasq[0].noresolv="$old_noresolv"
+	fi
+	if [ "$old_resolvfile" = "__unset__" ]; then
+		uci -q delete dhcp.@dnsmasq[0].resolvfile
+	elif [ -n "$old_resolvfile" ]; then
+		uci -q set dhcp.@dnsmasq[0].resolvfile="$old_resolvfile"
+	fi
+	uci -q commit dhcp
+	uci -q delete "$CONFIG.$SECTION.saved_noresolv"
+	uci -q delete "$CONFIG.$SECTION.saved_resolvfile"
+	uci -q delete "$CONFIG.$SECTION.managed_port"
+	dnsmasq_restart
+}
+
+restore_exchange() {
+	local configpath old_agh_port old_dnsmasq_port
+	config_get configpath "$SECTION" configpath "/etc/AdGuardHome.yaml"
+	config_get old_agh_port "$SECTION" saved_agh_port ""
+	config_get old_dnsmasq_port "$SECTION" saved_dnsmasq_port ""
+	is_uint "$old_agh_port" && set_yaml_dns_port "$configpath" "$old_agh_port"
+	if is_uint "$old_dnsmasq_port"; then
+		uci -q set dhcp.@dnsmasq[0].port="$old_dnsmasq_port"
+		uci -q commit dhcp
+		dnsmasq_restart
+	fi
+	uci -q delete "$CONFIG.$SECTION.saved_agh_port"
+	uci -q delete "$CONFIG.$SECTION.saved_dnsmasq_port"
+}
+
+redirect_clear() {
+	local active
+	config_get active "$SECTION" active_redirect "none"
+	case "$active" in
+		redirect)
+			if uci -q get firewall.adguardhome_dns >/dev/null; then
+				uci -q delete firewall.adguardhome_dns
+				uci -q commit firewall
+				firewall_reload
+			fi
+		;;
+		dnsmasq-upstream) restore_dnsmasq_upstream;;
+		exchange) restore_exchange;;
+	esac
+	uci -q set "$CONFIG.$SECTION.active_redirect=none"
+	uci -q commit "$CONFIG"
+	echo 0 >"$RUN_DIR/redirect.state"
+}
+
+redirect_apply() {
+	local mode configpath port active active_port old
+	config_get mode "$SECTION" redirect "none"
+	config_get configpath "$SECTION" configpath "/etc/AdGuardHome.yaml"
+	port="$(yaml_dns_port "$configpath")"
+	is_uint "$port" || { log "cannot determine the AdGuard Home DNS port"; redirect_clear; return 1; }
+	config_get active "$SECTION" active_redirect "none"
+	config_get active_port "$SECTION" active_port ""
+	[ "$active" = "$mode" ] && [ "$active_port" = "$port" ] && [ -f "$RUN_DIR/redirect.state" ] && return 0
+	redirect_clear
+	case "$mode" in
+		none) return 0;;
+		redirect)
+			uci -q batch <<-EOF
+				set firewall.adguardhome_dns=redirect
+				set firewall.adguardhome_dns.name='AdGuard Home DNS'
+				set firewall.adguardhome_dns.src='lan'
+				set firewall.adguardhome_dns.proto='tcp udp'
+				set firewall.adguardhome_dns.src_dport='53'
+				set firewall.adguardhome_dns.dest_port='$port'
+				set firewall.adguardhome_dns.target='DNAT'
+				set firewall.adguardhome_dns.family='any'
+				commit firewall
+			EOF
+			firewall_reload
+		;;
+		dnsmasq-upstream)
+			old="$(uci -q get dhcp.@dnsmasq[0].noresolv)"; [ -n "$old" ] || old=__unset__
+			uci -q set "$CONFIG.$SECTION.saved_noresolv=$old"
+			old="$(uci -q get dhcp.@dnsmasq[0].resolvfile)"; [ -n "$old" ] || old=__unset__
+			uci -q set "$CONFIG.$SECTION.saved_resolvfile=$old"
+			uci -q set "$CONFIG.$SECTION.managed_port=$port"
+			uci -q add_list dhcp.@dnsmasq[0].server="127.0.0.1#$port"
+			uci -q set dhcp.@dnsmasq[0].noresolv=1
+			uci -q delete dhcp.@dnsmasq[0].resolvfile
+			uci -q commit dhcp
+			dnsmasq_restart
+		;;
+		exchange)
+			old="$(uci -q get dhcp.@dnsmasq[0].port)"; is_uint "$old" || old=53
+			uci -q set "$CONFIG.$SECTION.saved_dnsmasq_port=$old"
+			uci -q set "$CONFIG.$SECTION.saved_agh_port=$port"
+			if [ "$port" = 53 ]; then
+				:
+			else
+				set_yaml_dns_port "$configpath" 53 || return 1
+				uci -q set dhcp.@dnsmasq[0].port="$port"
+				uci -q commit dhcp
+				dnsmasq_restart
+				port=53
+			fi
+		;;
+		*) log "invalid DNS integration mode: $mode"; return 1;;
+	esac
+	uci -q set "$CONFIG.$SECTION.active_redirect=$mode"
+	uci -q set "$CONFIG.$SECTION.active_port=$port"
+	uci -q commit "$CONFIG"
+	echo 1 >"$RUN_DIR/redirect.state"
+}
+
+write_upgrade_keep() {
+	local binpath configpath workdir logfile protect file
+	config_get binpath "$SECTION" binpath "/usr/bin/AdGuardHome/AdGuardHome"
+	config_get configpath "$SECTION" configpath "/etc/AdGuardHome.yaml"
+	config_get workdir "$SECTION" workdir "/usr/bin/AdGuardHome"
+	config_get logfile "$SECTION" logfile ""
+	config_get protect "$SECTION" upprotect ""
+	echo "$configpath" > /lib/upgrade/keep.d/luci-app-adguardhome
+	for file in $protect; do
+		case "$file" in
+			'${binpath}'|'$binpath') echo "$binpath";;
+			'${configpath}'|'$configpath') echo "$configpath";;
+			'${logfile}'|'$logfile') [ -n "$logfile" ] && [ "$logfile" != syslog ] && echo "$logfile";;
+			'${workdir}'/*) echo "$workdir/${file#'${workdir}'/}";;
+			'$workdir'/*) echo "$workdir/${file#'$workdir'/}";;
+		esac
+	done >> /lib/upgrade/keep.d/luci-app-adguardhome
+}
+
+restore_backup() {
+	local workdir backupdir items item
+	config_get workdir "$SECTION" workdir "/usr/bin/AdGuardHome"
+	config_get backupdir "$SECTION" backupwdpath "/usr/bin/AdGuardHome"
+	config_get items "$SECTION" backupfile ""
+	[ -n "$items" ] || return 0
+	mkdir -p "$workdir/data"
+	[ -z "$(ls -A "$workdir/data" 2>/dev/null)" ] || return 0
+	for item in $items; do
+		case "$item" in ''|*/*|.|..) continue;; esac
+		[ -e "$backupdir/data/$item" ] && cp -a "$backupdir/data/$item" "$workdir/data/"
+	done
+}
+
+save_backup() {
+	local workdir backupdir items item
+	config_get workdir "$SECTION" workdir "/usr/bin/AdGuardHome"
+	config_get backupdir "$SECTION" backupwdpath "/usr/bin/AdGuardHome"
+	config_get items "$SECTION" backupfile ""
+	[ -n "$items" ] || return 0
+	mkdir -p "$backupdir/data"
+	for item in $items; do
+		case "$item" in ''|*/*|.|..) continue;; esac
+		[ -e "$workdir/data/$item" ] || continue
+		rm -rf "$backupdir/data/$item.new"
+		cp -a "$workdir/data/$item" "$backupdir/data/$item.new" || continue
+		rm -rf "$backupdir/data/$item"
+		mv "$backupdir/data/$item.new" "$backupdir/data/$item"
+	done
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONFIG"
+}
+
+start_service() {
+	local enabled binpath configpath workdir httpport logfile verbose
+	mkdir -p "$RUN_DIR"
+	config_load "$CONFIG"
+	config_get_bool enabled "$SECTION" enabled 0
+	config_get binpath "$SECTION" binpath "/usr/bin/AdGuardHome/AdGuardHome"
+	config_get configpath "$SECTION" configpath "/etc/AdGuardHome.yaml"
+	config_get workdir "$SECTION" workdir "/usr/bin/AdGuardHome"
+	config_get httpport "$SECTION" httpport 3000
+	config_get logfile "$SECTION" logfile ""
+	config_get_bool verbose "$SECTION" verbose 0
+	write_upgrade_keep
+	/usr/share/AdGuardHome/update_cron.sh
+	if [ "$enabled" -ne 1 ]; then
+		redirect_clear
+		return 0
+	fi
+	[ -x "$binpath" ] || { log "core executable not found: $binpath"; redirect_clear; return 1; }
+	mkdir -p "$workdir/data" "${binpath%/*}" "${configpath%/*}"
+	restore_backup
+	"$binpath" --version >"$RUN_DIR/version.tmp" 2>/dev/null || true
+	mv -f "$RUN_DIR/version.tmp" "$RUN_DIR/version"
+	procd_open_instance main
+	procd_set_param command "$binpath" -c "$configpath" -w "$workdir" -p "$httpport"
+	[ -n "$logfile" ] && procd_append_param command -l "$logfile"
+	[ "$verbose" -eq 1 ] && procd_append_param command -v
+	procd_set_param respawn 3600 5 5
+	procd_set_param limits core="unlimited" nofile="65535 65535"
+	procd_set_param file "$configpath" /etc/hosts
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+	[ -f "$configpath" ] && redirect_apply || redirect_clear
+}
+
+stop_service() {
+	mkdir -p "$RUN_DIR"
+	config_load "$CONFIG"
+	redirect_clear
+	[ "${1:-}" = nobackup ] || save_backup
+	/usr/share/AdGuardHome/update_cron.sh
+}
+
+reload_service() {
+	stop
+	start
+}
+
+status() {
+	ubus call service list '{"name":"AdGuardHome"}'
+}
+
+update() {
+	/usr/share/AdGuardHome/update_core.sh "$@" &
+}

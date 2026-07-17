@@ -14,11 +14,15 @@ command -v curl >/dev/null 2>&1 || {
 	exit 1
 }
 
-jq -r '
+jq -c '
 	.packages[].upstreams[] |
 	select(.commit != null) |
-	[.repository, .branch, .path, .commit] | @tsv
-' "$MANIFEST" | sort -u | while IFS="	" read -r repository branch path recorded; do
+	{ repository, branch, path, commit }
+' "$MANIFEST" | sort -u | while IFS= read -r upstream; do
+	repository="$(printf '%s' "$upstream" | jq -r '.repository')"
+	branch="$(printf '%s' "$upstream" | jq -r '.branch')"
+	path="$(printf '%s' "$upstream" | jq -r '.path')"
+	recorded="$(printf '%s' "$upstream" | jq -r '.commit')"
 	slug="${repository#https://github.com/}"
 	if [ -n "$path" ]; then
 		latest="$(curl -fsSLG \

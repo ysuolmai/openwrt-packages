@@ -1,0 +1,21 @@
+{
+	"luci-app-adguardhome": {
+		"description": "Grant access to the AdGuard Home integration",
+		"read": {
+			"ubus": {
+				"luci.adguardhome": [ "status", "log_read", "config_read", "update_status" ],
+				"service": [ "list" ]
+			},
+			"uci": [ "AdGuardHome" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.adguardhome": [
+					"service_action", "log_clear", "config_write",
+					"update_start"
+				]
+			},
+			"uci": [ "AdGuardHome" ]
+		}
+	}
+}

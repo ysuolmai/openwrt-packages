@@ -1,0 +1,54 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=95
+STOP=10
+
+PROG=/usr/bin/ddns-go
+CONF=/etc/ddns-go/ddns-go-config.yaml
+RUNDIR=/var/run/ddns-go
+SOCKET=$RUNDIR/admin.sock
+
+start_service() {
+	local enabled interval cache_times skip_verify dns
+
+	config_load ddns-go
+	config_get_bool enabled main enabled 0
+	[ "$enabled" -eq 1 ] || return 0
+	config_get interval main interval 300
+	config_get cache_times main cache_times 5
+	config_get_bool skip_verify main skip_verify 0
+	config_get dns main dns ''
+
+	mkdir -p /etc/ddns-go "$RUNDIR"
+	touch "$CONF"
+	chown -R ddns-go:ddns-go /etc/ddns-go "$RUNDIR"
+	chmod 750 /etc/ddns-go "$RUNDIR"
+	chmod 600 "$CONF"
+	rm -f "$SOCKET"
+
+	procd_open_instance
+	procd_set_param command "$PROG" \
+		-noweb \
+		-openwrt-socket "$SOCKET" \
+		-c "$CONF" \
+		-f "$interval" \
+		-cacheTimes "$cache_times"
+	[ "$skip_verify" -eq 1 ] && procd_append_param command -skipVerify
+	[ -n "$dns" ] && procd_append_param command -dns "$dns"
+	procd_set_param user ddns-go
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param file "$CONF"
+	procd_close_instance
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger ddns-go
+}

@@ -64,6 +64,146 @@
         "Add a persistent service enable switch",
         "Detect running state without assuming a fixed procd instance name"
       ]
+    },
+    {
+      "name": "ddns-go",
+      "path": "ddns-go",
+      "upstreams": [
+        {
+          "role": "legacy-packaging-source",
+          "repository": "https://github.com/ysuolmai/luci-app-ddns-go",
+          "branch": "main",
+          "path": "ddns-go",
+          "commit": "49a8f623b21f424422317c34d8bfa76487d55ef4"
+        },
+        {
+          "role": "legacy-application-fork",
+          "repository": "https://github.com/ysuolmai/ddns-go",
+          "branch": "master",
+          "path": "",
+          "commit": "40cda8eac5856275bbf68c3373a5d95589b143f1"
+        },
+        {
+          "role": "canonical-application-upstream",
+          "repository": "https://github.com/jeessy2/ddns-go",
+          "branch": "master",
+          "path": "",
+          "commit": "bcab5727a6f40e6817cf86fc3cc422345d6eae32"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Embed the router fork source so the package collection builds independently",
+        "Expose a local-only OpenWrt management API and omit the standalone web UI"
+      ]
+    },
+    {
+      "name": "luci-app-ddns-go",
+      "path": "luci-app-ddns-go",
+      "upstreams": [
+        {
+          "role": "legacy-source",
+          "repository": "https://github.com/ysuolmai/luci-app-ddns-go",
+          "branch": "main",
+          "path": "luci-app-ddns-go",
+          "commit": "2cc2a0465b3d46d97d1be1ab5f77b4fc89a41b2b"
+        },
+        {
+          "role": "canonical-origin",
+          "repository": "https://github.com/sirpdboy/luci-app-ddns-go",
+          "branch": "main",
+          "path": "",
+          "commit": "7092e6de6ad9fe3f7d327f70468dfd19e00d6f0e"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Replace the standalone DDNS-GO web interface with native LuCI management",
+        "Use rpcd ACLs and the daemon's local Unix socket API"
+      ]
+    },
+    {
+      "name": "luci-app-adguardhome",
+      "path": "luci-app-adguardhome",
+      "upstreams": [
+        {
+          "role": "legacy-source",
+          "repository": "https://github.com/ysuolmai/luci-app-adguardhome-next",
+          "branch": "main",
+          "path": "",
+          "commit": "a3f0a166caee02fde07fc51b971de352b1844a52"
+        },
+        {
+          "role": "application-core",
+          "repository": "https://github.com/AdguardTeam/AdGuardHome",
+          "branch": "master",
+          "path": "",
+          "commit": null,
+          "tracking": "releases"
+        }
+      ],
+      "sync_strategy": "self-maintained",
+      "local_changes": [
+        "Modern JavaScript LuCI and a narrow rpcd API",
+        "Atomic configuration and core updates with rollback",
+        "firewall4-compatible DNS redirection"
+      ]
+    },
+    {
+      "name": "luci-theme-shadcn",
+      "path": "luci-theme-shadcn",
+      "upstreams": [
+        {
+          "role": "legacy-fork",
+          "repository": "https://github.com/ysuolmai/luci-theme-shadcn",
+          "branch": "main",
+          "path": "",
+          "commit": "ee1b5389fce7c02e142fba9db360e019350ca798"
+        },
+        {
+          "role": "canonical-upstream",
+          "repository": "https://github.com/eamonxg/luci-theme-shadcn",
+          "branch": "main",
+          "path": "",
+          "commit": "9a7eb900c5db313c4fbd486530cee5cf01d6d50a"
+        }
+      ],
+      "sync_strategy": "manual-fork",
+      "local_changes": [
+        "Carry the self-maintained theme assets and OpenWrt compatibility patches"
+      ]
+    },
+    {
+      "name": "luci-app-homeproxy",
+      "path": "luci-app-homeproxy",
+      "upstreams": [
+        {
+          "role": "legacy-fork",
+          "repository": "https://github.com/ysuolmai/homeproxy",
+          "branch": "main",
+          "path": "",
+          "commit": "65db7267b1ac5a754078d9776c0f33d932770cc6"
+        },
+        {
+          "role": "canonical-upstream",
+          "repository": "https://github.com/immortalwrt/homeproxy",
+          "branch": "master",
+          "path": "",
+          "commit": "7826c263609cf413c355eea6fd8cc1255b85f5c7"
+        },
+        {
+          "role": "primary-upstream",
+          "repository": "https://github.com/VIKINGYFY/packages",
+          "branch": "main",
+          "path": "luci-app-homeproxy",
+          "commit": "2102952977db26ed5471f1ac0c111012f5caab99"
+        }
+      ],
+      "sync_strategy": "viking-base-with-local-patches",
+      "local_changes": [
+        "Add a validated and configurable URL for the main URLTest outbound",
+        "Default URLTest to the Google generate_204 endpoint"
+      ]
     }
   ]
 }

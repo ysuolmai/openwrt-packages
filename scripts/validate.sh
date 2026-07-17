@@ -28,8 +28,23 @@ while IFS="	" read -r package path; do
 	}
 done
 
-for init in "$ROOT_DIR"/frp/files/*.init; do
-	sh -n "$init"
+package_paths="$(jq -r '.packages[].path' "$MANIFEST")"
+
+for path in $package_paths; do
+	find "$ROOT_DIR/$path" -type f | while IFS= read -r file; do
+		first_line="$(sed -n '1p' "$file")"
+		case "$first_line" in
+		'#!'*'/bin/sh'*) sh -n "$file" ;;
+		esac
+	done
+
+	find "$ROOT_DIR/$path" -type f -name '*.json' -exec jq -e . {} \; >/dev/null
+
+	if [ -d "$ROOT_DIR/$path/htdocs" ]; then
+		find "$ROOT_DIR/$path/htdocs" -type f -name '*.js' | while IFS= read -r file; do
+			node --check "$file"
+		done
+	fi
 done
 
-echo "Package metadata and shell scripts are valid."
+echo "Package metadata, shell scripts, JSON and LuCI JavaScript are valid."

@@ -1,0 +1,6 @@
+#!/bin/sh
+
+chmod 755 /usr/share/rpcd/ucode/luci.ddns-go
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
+[ -n "$IPKG_INSTROOT" ] || /etc/init.d/rpcd restart
+exit 0
