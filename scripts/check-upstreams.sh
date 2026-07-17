@@ -9,18 +9,32 @@ command -v jq >/dev/null 2>&1 || {
 	echo "error: jq is required" >&2
 	exit 1
 }
+command -v curl >/dev/null 2>&1 || {
+	echo "error: curl is required" >&2
+	exit 1
+}
 
 jq -r '
 	.packages[].upstreams[] |
 	select(.commit != null) |
-	[.repository, .branch, .commit] | @tsv
-' "$MANIFEST" | sort -u | while IFS="	" read -r repository branch recorded; do
-	latest="$(git ls-remote "$repository.git" "refs/heads/$branch" | awk 'NR == 1 { print $1 }')"
-	if [ -z "$latest" ]; then
-		echo "ERROR    $repository ($branch): branch not found"
-	elif [ "$latest" = "$recorded" ]; then
-		echo "CURRENT  $repository ($branch): $recorded"
+	[.repository, .branch, .path, .commit] | @tsv
+' "$MANIFEST" | sort -u | while IFS="	" read -r repository branch path recorded; do
+	slug="${repository#https://github.com/}"
+	if [ -n "$path" ]; then
+		latest="$(curl -fsSLG \
+			--data-urlencode "sha=$branch" \
+			--data-urlencode "path=$path" \
+			--data-urlencode "per_page=1" \
+			"https://api.github.com/repos/$slug/commits" |
+			jq -r '.[0].sha // empty')"
 	else
-		echo "UPDATE   $repository ($branch): $recorded -> $latest"
+		latest="$(git ls-remote "$repository.git" "refs/heads/$branch" | awk 'NR == 1 { print $1 }')"
+	fi
+	if [ -z "$latest" ]; then
+		echo "ERROR    $repository/$path ($branch): upstream not found"
+	elif [ "$latest" = "$recorded" ]; then
+		echo "CURRENT  $repository/$path ($branch): $recorded"
+	else
+		echo "UPDATE   $repository/$path ($branch): $recorded -> $latest"
 	fi
 done

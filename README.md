@@ -12,8 +12,8 @@ Self-maintained OpenWrt packages used by
 | `luci-app-frps` | [`immortalwrt/luci`](https://github.com/immortalwrt/luci/tree/master/applications/luci-app-frps) | LuCI server configuration with a service switch |
 
 The machine-readable source of truth is [`upstreams.json`](upstreams.json). It
-records every package's upstream repository, branch, source path, synchronized
-commit, synchronization strategy, and local changes.
+records every package's upstream repository, branch, source path, latest
+path-specific commit, synchronization strategy, and local changes.
 
 ## Updating
 

@@ -10,7 +10,7 @@
           "repository": "https://github.com/kenzok8/jell",
           "branch": "main",
           "path": "frp",
-          "commit": "e7515db777ff4be622f79501dff8d88e3aef4a84"
+          "commit": "ede45ec0b4c58b4e4c8a74f09af61f780325e8d0"
         },
         {
           "role": "application-source",
@@ -38,7 +38,7 @@
           "repository": "https://github.com/immortalwrt/luci",
           "branch": "master",
           "path": "applications/luci-app-frpc",
-          "commit": "d2afa60ef40155022199a62fbd8e6713a7975c9c"
+          "commit": "c4b9631522b25d85f3e2d977fb6e6bc3978ca5f3"
         }
       ],
       "sync_strategy": "manual-fork",
@@ -56,7 +56,7 @@
           "repository": "https://github.com/immortalwrt/luci",
           "branch": "master",
           "path": "applications/luci-app-frps",
-          "commit": "d2afa60ef40155022199a62fbd8e6713a7975c9c"
+          "commit": "fd9f50bc3a62ae80353900d40263ddc70d5ba367"
         }
       ],
       "sync_strategy": "manual-fork",
