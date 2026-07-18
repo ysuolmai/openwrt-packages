@@ -47,6 +47,22 @@ jobs:
         run: |
           git clone --depth=1 --single-branch --branch "$OPENWRT_BRANCH" \
             "$OPENWRT_REPO" wrt
+          echo "OPENWRT_HASH=$(git -C wrt rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Restore OpenWrt toolchain cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-${{ env.OPENWRT_HASH }}
+          restore-keys: |
+            ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-
+            ${{ env.OPENWRT_CONFIG }}-
+          path: |
+            wrt/.ccache
+            wrt/staging_dir/host*
+            wrt/staging_dir/tool*
+
+      - name: Install feeds
+        run: |
           cd wrt
           ./scripts/feeds update -a
           ./scripts/feeds install -a
