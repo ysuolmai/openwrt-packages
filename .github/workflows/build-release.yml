@@ -4,6 +4,34 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      package:
+        description: Package source directory to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - frp
+          - luci-app-frpc
+          - luci-app-frps
+          - ddns-go
+          - luci-app-ddns-go
+          - luci-app-adguardhome
+          - luci-theme-shadcn
+          - sing-box
+          - luci-app-homeproxy
+          - moontvplus
+          - luci-app-moontvplus
+      format:
+        description: Package format to build
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - ipk
+          - apk
 
 permissions:
   contents: write
@@ -18,14 +46,12 @@ env:
   OPENWRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
   OPENWRT_BRANCH: main
   OPENWRT_CONFIG: IPQ60XX-WIFI-YES
-  PACKAGE_PATHS: >-
+  COLLECTION_PATHS: >-
     frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go
     luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
     moontvplus luci-app-moontvplus
-  EXPECTED_PACKAGES: >-
-    frpc frps luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go
-    luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
-    moontvplus luci-app-moontvplus
+  SELECTED_PACKAGE: ${{ inputs.package || 'all' }}
+  BUILD_FORMAT: ${{ inputs.format || 'both' }}
 
 jobs:
   build:
@@ -33,6 +59,33 @@ jobs:
     steps:
       - name: Checkout package collection
         uses: actions/checkout@v4
+
+      - name: Select packages to build
+        run: |
+          case "$SELECTED_PACKAGE" in
+            all)
+              build_paths="$COLLECTION_PATHS"
+              expected_packages="frpc frps luci-app-frpc luci-app-frps ddns-go \
+                luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn sing-box \
+                luci-app-homeproxy moontvplus luci-app-moontvplus"
+              ;;
+            frp)
+              build_paths=frp
+              expected_packages="frpc frps"
+              ;;
+            luci-app-frpc|luci-app-frps|ddns-go|luci-app-ddns-go|\
+            luci-app-adguardhome|luci-theme-shadcn|sing-box|\
+            luci-app-homeproxy|moontvplus|luci-app-moontvplus)
+              build_paths="$SELECTED_PACKAGE"
+              expected_packages="$SELECTED_PACKAGE"
+              ;;
+            *)
+              echo "Unsupported package: $SELECTED_PACKAGE" >&2
+              exit 1
+              ;;
+          esac
+          echo "BUILD_PATHS=$build_paths" >> "$GITHUB_ENV"
+          echo "EXPECTED_PACKAGES=$expected_packages" >> "$GITHUB_ENV"
 
       - name: Prepare build environment
         env:
@@ -77,13 +130,13 @@ jobs:
 
       - name: Remove conflicting packages and add this collection
         run: |
-          for package in $PACKAGE_PATHS; do
+          for package in $COLLECTION_PATHS; do
             find wrt/package -mindepth 2 -maxdepth 5 \
               \( -type d -o -type l \) -name "$package" -prune \
               -exec rm -rf -- {} +
           done
           mkdir -p wrt/package/ysuolmai
-          for package in $PACKAGE_PATHS; do
+          for package in $COLLECTION_PATHS; do
             cp -a "$package" "wrt/package/ysuolmai/$package"
           done
 
@@ -133,12 +186,13 @@ jobs:
             wrt/staging_dir/tool*
 
       - name: Build IPK packages
+        if: env.BUILD_FORMAT == 'both' || env.BUILD_FORMAT == 'ipk'
         run: |
           cd wrt
           mkdir -p "$GITHUB_WORKSPACE/release"
           failures="$RUNNER_TEMP/ipk-build-failures.txt"
           : > "$failures"
-          for package in $PACKAGE_PATHS; do
+          for package in $BUILD_PATHS; do
             if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
               printf '%s\n' "$package" >> "$failures"
             fi
@@ -152,14 +206,16 @@ jobs:
             -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
       - name: Build APK packages
+        if: env.BUILD_FORMAT == 'both' || env.BUILD_FORMAT == 'apk'
         run: |
           cd wrt
+          mkdir -p "$GITHUB_WORKSPACE/release"
           sed -i '/^CONFIG_USE_APK=/d' .config
           echo 'CONFIG_USE_APK=y' >> .config
           make defconfig
           failures="$RUNNER_TEMP/apk-build-failures.txt"
           : > "$failures"
-          for package in $PACKAGE_PATHS; do
+          for package in $BUILD_PATHS; do
             make "package/ysuolmai/$package/clean"
             if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
               printf '%s\n' "$package" >> "$failures"
@@ -176,17 +232,29 @@ jobs:
       - name: Verify package output
         run: |
           for package in $EXPECTED_PACKAGES; do
-            test -n "$(find release -maxdepth 1 -type f -name "${package}_*.ipk" -print -quit)" || {
-              echo "Missing IPK output for $package" >&2
-              exit 1
-            }
-            test -n "$(find release -maxdepth 1 -type f -name "${package}-*.apk" -print -quit)" || {
-              echo "Missing APK output for $package" >&2
-              exit 1
-            }
+            if [ "$BUILD_FORMAT" = both ] || [ "$BUILD_FORMAT" = ipk ]; then
+              test -n "$(find release -maxdepth 1 -type f -name "${package}_*.ipk" -print -quit)" || {
+                echo "Missing IPK output for $package" >&2
+                exit 1
+              }
+            fi
+            if [ "$BUILD_FORMAT" = both ] || [ "$BUILD_FORMAT" = apk ]; then
+              test -n "$(find release -maxdepth 1 -type f -name "${package}-*.apk" -print -quit)" || {
+                echo "Missing APK output for $package" >&2
+                exit 1
+              }
+            fi
           done
 
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ env.SELECTED_PACKAGE }}-${{ env.BUILD_FORMAT }}-${{ github.run_number }}
+          path: release/*
+          if-no-files-found: error
+
       - name: Publish one release
+        if: github.event_name == 'push' || (inputs.package == 'all' && inputs.format == 'both')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: packages-ipq60xx-${{ github.run_number }}

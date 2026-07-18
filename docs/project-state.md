@@ -110,6 +110,10 @@ verification; staging toolchains and ccache were retained.
   modules. Every owned package is attempted, but any failed build or missing
   primary IPK/APK output blocks the Release instead of producing a false-green
   partial release.
+- Manual runs can select one source package and choose IPK, APK, or both output
+  formats. Focused runs upload Actions artifacts for diagnosis without creating
+  a partial GitHub Release; push builds and manual all-package builds retain the
+  complete Release path.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.
