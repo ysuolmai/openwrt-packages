@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Purpose
 
@@ -103,6 +103,13 @@ verification; staging toolchains and ccache were retained.
   `CONFIG_USE_APK=n` and once with `CONFIG_USE_APK=y`, and publishes all `.ipk`
   and `.apk` files in one GitHub Release. It does not build firmware or any
   other target platform.
+- Before importing the collection, the workflow removes same-named packages
+  installed from feeds or the source tree. This prevents feed versions from
+  shadowing the locally maintained recipes.
+- The workflow builds the target kernel before packages that depend on kernel
+  modules. Every owned package is attempted, but any failed build or missing
+  primary IPK/APK output blocks the Release instead of producing a false-green
+  partial release.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.

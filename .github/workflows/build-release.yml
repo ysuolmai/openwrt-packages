@@ -18,6 +18,14 @@ env:
   OPENWRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
   OPENWRT_BRANCH: main
   OPENWRT_CONFIG: IPQ60XX-WIFI-YES
+  PACKAGE_PATHS: >-
+    frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go
+    luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
+    moontvplus luci-app-moontvplus
+  EXPECTED_PACKAGES: >-
+    frpc frps luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go
+    luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
+    moontvplus luci-app-moontvplus
 
 jobs:
   build:
@@ -67,12 +75,16 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Add this collection to the buildroot
+      - name: Remove conflicting packages and add this collection
         run: |
-          for package in frp luci-app-frpc luci-app-frps ddns-go \
-              luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn \
-              luci-app-homeproxy; do
-            cp -a "$package" "wrt/package/ysuolmai-$package"
+          for package in $PACKAGE_PATHS; do
+            find wrt/package -mindepth 2 -maxdepth 5 \
+              \( -type d -o -type l \) -name "$package" -prune \
+              -exec rm -rf -- {} +
+          done
+          mkdir -p wrt/package/ysuolmai
+          for package in $PACKAGE_PATHS; do
+            cp -a "$package" "wrt/package/ysuolmai/$package"
           done
 
       - name: Configure IPQ60XX package build
@@ -91,7 +103,10 @@ jobs:
           CONFIG_PACKAGE_luci-app-ddns-go=y
           CONFIG_PACKAGE_luci-app-adguardhome=y
           CONFIG_PACKAGE_luci-theme-shadcn=y
+          CONFIG_PACKAGE_sing-box=y
           CONFIG_PACKAGE_luci-app-homeproxy=y
+          CONFIG_PACKAGE_moontvplus=y
+          CONFIG_PACKAGE_luci-app-moontvplus=y
           CONFIG_USE_APK=n
           EOF
           make defconfig
@@ -101,10 +116,10 @@ jobs:
           cd wrt
           make toolchain/install -j"$(nproc)" || make toolchain/install -j1 V=s
 
-      - name: Prepare target kernel metadata
+      - name: Build target kernel
         run: |
           cd wrt
-          make target/linux/prepare -j"$(nproc)" || make target/linux/prepare -j1 V=s
+          make target/linux/compile -j"$(nproc)" || make target/linux/compile -j1 V=s
 
       - name: Save OpenWrt toolchain cache
         if: always()
@@ -121,15 +136,20 @@ jobs:
         run: |
           cd wrt
           mkdir -p "$GITHUB_WORKSPACE/release"
-          : > "$GITHUB_WORKSPACE/release/build-failures.txt"
-          packages="frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go \
-            luci-app-adguardhome luci-theme-shadcn luci-app-homeproxy"
-          for package in $packages; do
-            if ! make "package/ysuolmai-$package/compile" -j"$(nproc)" V=s; then
-              printf 'ipk %s\n' "$package" >> "$GITHUB_WORKSPACE/release/build-failures.txt"
+          failures="$RUNNER_TEMP/ipk-build-failures.txt"
+          : > "$failures"
+          for package in $PACKAGE_PATHS; do
+            if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
+              printf '%s\n' "$package" >> "$failures"
             fi
-            find bin/packages -type f -name '*.ipk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
           done
+          if [ -s "$failures" ]; then
+            echo "IPK builds failed:"
+            cat "$failures"
+            exit 1
+          fi
+          find bin/packages -type f -name '*.ipk' \
+            -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
       - name: Build APK packages
         run: |
@@ -137,19 +157,34 @@ jobs:
           sed -i '/^CONFIG_USE_APK=/d' .config
           echo 'CONFIG_USE_APK=y' >> .config
           make defconfig
-          packages="frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go \
-            luci-app-adguardhome luci-theme-shadcn luci-app-homeproxy"
-          for package in $packages; do
-            make "package/ysuolmai-$package/clean" || true
-            if ! make "package/ysuolmai-$package/compile" -j"$(nproc)" V=s; then
-              printf 'apk %s\n' "$package" >> "$GITHUB_WORKSPACE/release/build-failures.txt"
+          failures="$RUNNER_TEMP/apk-build-failures.txt"
+          : > "$failures"
+          for package in $PACKAGE_PATHS; do
+            make "package/ysuolmai/$package/clean"
+            if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
+              printf '%s\n' "$package" >> "$failures"
             fi
-            find bin/packages -type f -name '*.apk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
           done
+          if [ -s "$failures" ]; then
+            echo "APK builds failed:"
+            cat "$failures"
+            exit 1
+          fi
+          find bin/packages -type f -name '*.apk' \
+            -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
       - name: Verify package output
         run: |
-          test -n "$(find release -type f \( -name '*.ipk' -o -name '*.apk' \) -print -quit)"
+          for package in $EXPECTED_PACKAGES; do
+            test -n "$(find release -maxdepth 1 -type f -name "${package}_*.ipk" -print -quit)" || {
+              echo "Missing IPK output for $package" >&2
+              exit 1
+            }
+            test -n "$(find release -maxdepth 1 -type f -name "${package}-*.apk" -print -quit)" || {
+              echo "Missing APK output for $package" >&2
+              exit 1
+            }
+          done
 
       - name: Publish one release
         uses: softprops/action-gh-release@v2

@@ -16,6 +16,8 @@ Self-maintained OpenWrt packages used by
 | `luci-theme-shadcn` | [`eamonxg/luci-theme-shadcn`](https://github.com/eamonxg/luci-theme-shadcn) | Self-maintained shadcn-style LuCI theme |
 | `sing-box` | [`VIKINGYFY/packages`](https://github.com/VIKINGYFY/packages/tree/main/sing-box) | Runtime version paired with the maintained HomeProxy architecture |
 | `luci-app-homeproxy` | [`VIKINGYFY/packages`](https://github.com/VIKINGYFY/packages/tree/main/luci-app-homeproxy) | Performance-oriented HomeProxy with configurable main URLTest URL |
+| `moontvplus` | [`ysuolmai/MoonTVPlus`](https://github.com/ysuolmai/MoonTVPlus) | Native Node.js service managed by procd without Docker |
+| `luci-app-moontvplus` | [`ysuolmai/MoonTVPlus`](https://github.com/ysuolmai/MoonTVPlus) | LuCI configuration, service control and log viewing for MoonTVPlus |
 
 The machine-readable source of truth is [`upstreams.json`](upstreams.json). It
 records every package's upstream repository, branch, source path, latest
