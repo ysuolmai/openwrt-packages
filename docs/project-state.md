@@ -113,7 +113,8 @@ verification; staging toolchains and ccache were retained.
 - Manual runs can select one source package and choose IPK, APK, or both output
   formats. Focused runs upload Actions artifacts for diagnosis without creating
   a partial GitHub Release; push builds and manual all-package builds retain the
-  complete Release path.
+  complete Release path. Runs are independent and may execute concurrently, so
+  focused diagnostics do not block full collection builds.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.

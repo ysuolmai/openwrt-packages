@@ -36,10 +36,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: build-ipq60xx-packages
-  cancel-in-progress: false
-
 env:
   OPENWRT_CI_REPO: https://github.com/ysuolmai/OpenWRT-CI.git
   OPENWRT_CI_BRANCH: main
