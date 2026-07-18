@@ -73,8 +73,12 @@ standalone application. It runs under procd without Docker. The service package
 cross-compiles `better-sqlite3` for the OpenWrt target and omits optional
 `sharp`-based manga cover compression. Host x86-64 ELF files pulled into the
 Next.js standalone dependency tree are removed before OpenWrt dependency
-scanning and packaging. `luci-app-moontvplus` owns its UCI, service control and
-log interface.
+scanning and packaging. The shell positional parameter in this removal command
+must use `$$$$1` in the package Makefile because `BuildPackage` and the final
+recipe each consume one level of dollar escaping. GitHub Actions run
+`29645660124` exposed the previous `$$1` form as `file ""`, leaving host ELF
+files in the package and causing false glibc dependency errors.
+`luci-app-moontvplus` owns its UCI, service control and log interface.
 
 ## Build verification
 
