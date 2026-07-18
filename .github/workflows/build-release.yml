@@ -1,0 +1,116 @@
+name: Build IPQ60XX packages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-ipq60xx-packages
+  cancel-in-progress: false
+
+env:
+  OPENWRT_CI_REPO: https://github.com/ysuolmai/OpenWRT-CI.git
+  OPENWRT_CI_BRANCH: main
+  OPENWRT_REPO: https://github.com/VIKINGYFY/immortalwrt.git
+  OPENWRT_BRANCH: main
+  OPENWRT_CONFIG: IPQ60XX-WIFI-YES
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout package collection
+        uses: actions/checkout@v4
+
+      - name: Prepare build environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          sudo apt-get update
+          sudo apt-get install -y dos2unix libfuse-dev
+          sudo bash -c 'bash <(curl -fsSL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+
+      - name: Checkout OpenWRT-CI configuration
+        uses: actions/checkout@v4
+        with:
+          repository: ysuolmai/OpenWRT-CI
+          ref: main
+          path: ci
+
+      - name: Clone ImmortalWrt and install feeds
+        run: |
+          git clone --depth=1 --single-branch --branch "$OPENWRT_BRANCH" \
+            "$OPENWRT_REPO" wrt
+          cd wrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Add this collection to the buildroot
+        run: |
+          mkdir -p wrt/package/ysuolmai
+          for package in frp luci-app-frpc luci-app-frps ddns-go \
+              luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn \
+              luci-app-homeproxy; do
+            cp -a "$package" "wrt/package/ysuolmai/$package"
+          done
+
+      - name: Configure IPQ60XX package build
+        run: |
+          cd wrt
+          cat "$GITHUB_WORKSPACE/ci/Config/$OPENWRT_CONFIG.txt" > .config
+          cat >> .config <<'EOF'
+          CONFIG_PACKAGE_luci=y
+          CONFIG_LUCI_LANG_zh_Hans=y
+          CONFIG_PACKAGE_luci-theme-shadcn=y
+          CONFIG_PACKAGE_frpc=y
+          CONFIG_PACKAGE_frps=y
+          CONFIG_PACKAGE_ddns-go=y
+          CONFIG_PACKAGE_luci-app-frpc=y
+          CONFIG_PACKAGE_luci-app-frps=y
+          CONFIG_PACKAGE_luci-app-ddns-go=y
+          CONFIG_PACKAGE_luci-app-adguardhome=y
+          CONFIG_PACKAGE_luci-theme-shadcn=y
+          CONFIG_PACKAGE_luci-app-homeproxy=y
+          CONFIG_USE_APK=n
+          EOF
+          make defconfig
+
+      - name: Build IPK packages
+        run: |
+          cd wrt
+          make package/ysuolmai/compile -j"$(nproc)" V=s
+          mkdir -p "$GITHUB_WORKSPACE/release"
+          find bin/packages -type f -name '*.ipk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/release" -type f -name '*.ipk' -print -quit)"
+
+      - name: Build APK packages
+        run: |
+          cd wrt
+          sed -i '/^CONFIG_USE_APK=/d' .config
+          echo 'CONFIG_USE_APK=y' >> .config
+          make defconfig
+          make package/ysuolmai/clean
+          make package/ysuolmai/compile -j"$(nproc)" V=s
+          find bin/packages -type f -name '*.apk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
+          test -n "$(find "$GITHUB_WORKSPACE/release" -type f -name '*.apk' -print -quit)"
+
+      - name: Publish one release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: packages-ipq60xx-${{ github.run_number }}
+          name: IPQ60XX packages ${{ github.run_number }}
+          generate_release_notes: true
+          body: |
+            Target: qualcommax / ipq60xx
+            Source: ${{ env.OPENWRT_REPO }} (${{ env.OPENWRT_BRANCH }})
+            Package collection commit: ${{ github.sha }}
+
+            This release contains both `.ipk` and `.apk` packages built for the
+            IPQ60XX target used by OpenWRT-CI.
+          files: release/*

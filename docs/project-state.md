@@ -86,6 +86,16 @@ verification; staging toolchains and ccache were retained.
 
 ## Current repository delivery
 
+## Package release workflow
+
+- `.github/workflows/build-release.yml` builds the collection once for the
+  OpenWRT-CI `IPQ60XX-WIFI-YES` configuration (`qualcommax/ipq60xx`) using
+  `VIKINGYFY/immortalwrt` `main`.
+- The workflow injects every package owned by this repository, builds once with
+  `CONFIG_USE_APK=n` and once with `CONFIG_USE_APK=y`, and publishes all `.ipk`
+  and `.apk` files in one GitHub Release. It does not build firmware or any
+  other target platform.
+
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.
 - `ysuolmai/openwrt-ci2`: source migration commit `fe5633a`.
