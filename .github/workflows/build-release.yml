@@ -96,6 +96,11 @@ jobs:
           EOF
           make defconfig
 
+      - name: Build target toolchain
+        run: |
+          cd wrt
+          make toolchain/install -j"$(nproc)" || make toolchain/install -j1 V=s
+
       - name: Build IPK packages
         run: |
           cd wrt
