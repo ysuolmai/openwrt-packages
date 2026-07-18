@@ -53,11 +53,10 @@ jobs:
 
       - name: Add this collection to the buildroot
         run: |
-          mkdir -p wrt/package/ysuolmai
           for package in frp luci-app-frpc luci-app-frps ddns-go \
               luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn \
               luci-app-homeproxy; do
-            cp -a "$package" "wrt/package/ysuolmai/$package"
+            cp -a "$package" "wrt/package/ysuolmai-$package"
           done
 
       - name: Configure IPQ60XX package build
@@ -85,14 +84,14 @@ jobs:
         run: |
           cd wrt
           make \
-            package/ysuolmai/frp/compile \
-            package/ysuolmai/luci-app-frpc/compile \
-            package/ysuolmai/luci-app-frps/compile \
-            package/ysuolmai/ddns-go/compile \
-            package/ysuolmai/luci-app-ddns-go/compile \
-            package/ysuolmai/luci-app-adguardhome/compile \
-            package/ysuolmai/luci-theme-shadcn/compile \
-            package/ysuolmai/luci-app-homeproxy/compile \
+            package/ysuolmai-frp/compile \
+            package/ysuolmai-luci-app-frpc/compile \
+            package/ysuolmai-luci-app-frps/compile \
+            package/ysuolmai-ddns-go/compile \
+            package/ysuolmai-luci-app-ddns-go/compile \
+            package/ysuolmai-luci-app-adguardhome/compile \
+            package/ysuolmai-luci-theme-shadcn/compile \
+            package/ysuolmai-luci-app-homeproxy/compile \
             -j"$(nproc)" V=s
           mkdir -p "$GITHUB_WORKSPACE/release"
           find bin/packages -type f -name '*.ipk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
@@ -105,23 +104,23 @@ jobs:
           echo 'CONFIG_USE_APK=y' >> .config
           make defconfig
           make \
-            package/ysuolmai/frp/clean \
-            package/ysuolmai/luci-app-frpc/clean \
-            package/ysuolmai/luci-app-frps/clean \
-            package/ysuolmai/ddns-go/clean \
-            package/ysuolmai/luci-app-ddns-go/clean \
-            package/ysuolmai/luci-app-adguardhome/clean \
-            package/ysuolmai/luci-theme-shadcn/clean \
-            package/ysuolmai/luci-app-homeproxy/clean
+            package/ysuolmai-frp/clean \
+            package/ysuolmai-luci-app-frpc/clean \
+            package/ysuolmai-luci-app-frps/clean \
+            package/ysuolmai-ddns-go/clean \
+            package/ysuolmai-luci-app-ddns-go/clean \
+            package/ysuolmai-luci-app-adguardhome/clean \
+            package/ysuolmai-luci-theme-shadcn/clean \
+            package/ysuolmai-luci-app-homeproxy/clean
           make \
-            package/ysuolmai/frp/compile \
-            package/ysuolmai/luci-app-frpc/compile \
-            package/ysuolmai/luci-app-frps/compile \
-            package/ysuolmai/ddns-go/compile \
-            package/ysuolmai/luci-app-ddns-go/compile \
-            package/ysuolmai/luci-app-adguardhome/compile \
-            package/ysuolmai/luci-theme-shadcn/compile \
-            package/ysuolmai/luci-app-homeproxy/compile \
+            package/ysuolmai-frp/compile \
+            package/ysuolmai-luci-app-frpc/compile \
+            package/ysuolmai-luci-app-frps/compile \
+            package/ysuolmai-ddns-go/compile \
+            package/ysuolmai-luci-app-ddns-go/compile \
+            package/ysuolmai-luci-app-adguardhome/compile \
+            package/ysuolmai-luci-theme-shadcn/compile \
+            package/ysuolmai-luci-app-homeproxy/compile \
             -j"$(nproc)" V=s
           find bin/packages -type f -name '*.apk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
           test -n "$(find "$GITHUB_WORKSPACE/release" -type f -name '*.apk' -print -quit)"
