@@ -101,6 +101,11 @@ jobs:
           cd wrt
           make toolchain/install -j"$(nproc)" || make toolchain/install -j1 V=s
 
+      - name: Prepare target kernel metadata
+        run: |
+          cd wrt
+          make target/linux/prepare -j"$(nproc)" || make target/linux/prepare -j1 V=s
+
       - name: Build IPK packages
         run: |
           cd wrt
