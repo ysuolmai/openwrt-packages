@@ -106,6 +106,17 @@ jobs:
           cd wrt
           make target/linux/prepare -j"$(nproc)" || make target/linux/prepare -j1 V=s
 
+      - name: Save OpenWrt toolchain cache
+        if: always()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-${{ env.OPENWRT_HASH }}
+          path: |
+            wrt/.ccache
+            wrt/staging_dir/host*
+            wrt/staging_dir/tool*
+
       - name: Build IPK packages
         run: |
           cd wrt
