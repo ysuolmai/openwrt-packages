@@ -84,7 +84,16 @@ jobs:
       - name: Build IPK packages
         run: |
           cd wrt
-          make package/ysuolmai/compile -j"$(nproc)" V=s
+          make \
+            package/ysuolmai/frp/compile \
+            package/ysuolmai/luci-app-frpc/compile \
+            package/ysuolmai/luci-app-frps/compile \
+            package/ysuolmai/ddns-go/compile \
+            package/ysuolmai/luci-app-ddns-go/compile \
+            package/ysuolmai/luci-app-adguardhome/compile \
+            package/ysuolmai/luci-theme-shadcn/compile \
+            package/ysuolmai/luci-app-homeproxy/compile \
+            -j"$(nproc)" V=s
           mkdir -p "$GITHUB_WORKSPACE/release"
           find bin/packages -type f -name '*.ipk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
           test -n "$(find "$GITHUB_WORKSPACE/release" -type f -name '*.ipk' -print -quit)"
@@ -95,8 +104,25 @@ jobs:
           sed -i '/^CONFIG_USE_APK=/d' .config
           echo 'CONFIG_USE_APK=y' >> .config
           make defconfig
-          make package/ysuolmai/clean
-          make package/ysuolmai/compile -j"$(nproc)" V=s
+          make \
+            package/ysuolmai/frp/clean \
+            package/ysuolmai/luci-app-frpc/clean \
+            package/ysuolmai/luci-app-frps/clean \
+            package/ysuolmai/ddns-go/clean \
+            package/ysuolmai/luci-app-ddns-go/clean \
+            package/ysuolmai/luci-app-adguardhome/clean \
+            package/ysuolmai/luci-theme-shadcn/clean \
+            package/ysuolmai/luci-app-homeproxy/clean
+          make \
+            package/ysuolmai/frp/compile \
+            package/ysuolmai/luci-app-frpc/compile \
+            package/ysuolmai/luci-app-frps/compile \
+            package/ysuolmai/ddns-go/compile \
+            package/ysuolmai/luci-app-ddns-go/compile \
+            package/ysuolmai/luci-app-adguardhome/compile \
+            package/ysuolmai/luci-theme-shadcn/compile \
+            package/ysuolmai/luci-app-homeproxy/compile \
+            -j"$(nproc)" V=s
           find bin/packages -type f -name '*.apk' -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
           test -n "$(find "$GITHUB_WORKSPACE/release" -type f -name '*.apk' -print -quit)"
 
