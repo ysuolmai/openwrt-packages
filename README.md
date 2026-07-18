@@ -14,6 +14,7 @@ Self-maintained OpenWrt packages used by
 | `luci-app-ddns-go` | [`sirpdboy/luci-app-ddns-go`](https://github.com/sirpdboy/luci-app-ddns-go) | Native LuCI management for the router DDNS engine |
 | `luci-app-adguardhome` | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | LuCI integration, service management and core updates |
 | `luci-theme-shadcn` | [`eamonxg/luci-theme-shadcn`](https://github.com/eamonxg/luci-theme-shadcn) | Self-maintained shadcn-style LuCI theme |
+| `sing-box` | [`VIKINGYFY/packages`](https://github.com/VIKINGYFY/packages/tree/main/sing-box) | Runtime version paired with the maintained HomeProxy architecture |
 | `luci-app-homeproxy` | [`VIKINGYFY/packages`](https://github.com/VIKINGYFY/packages/tree/main/luci-app-homeproxy) | Performance-oriented HomeProxy with configurable main URLTest URL |
 
 The machine-readable source of truth is [`upstreams.json`](upstreams.json). It

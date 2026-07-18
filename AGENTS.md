@@ -18,6 +18,8 @@ standalone package repository unless the user explicitly requests it.
 ## HomeProxy
 
 - Use `VIKINGYFY/packages/luci-app-homeproxy` as the primary upstream.
+- Mirror `VIKINGYFY/packages/sing-box` with HomeProxy and update them as a
+  compatible pair.
 - Preserve the configurable main URLTest URL on the Dashboard tab, its HTTP(S)
   validation, presets, UCI default, Chinese translation, and sing-box generator
   mapping.

@@ -5,6 +5,10 @@ upstream. This version was selected for its newer sing-box 1.14 architecture,
 dashboard integration, runtime port allocation, and streamlined GeoSite/GeoIP
 routing resources.
 
+The matching `VIKINGYFY/packages/sing-box` directory is mirrored alongside
+HomeProxy. CI consumers must remove feed and third-party copies of both packages
+before cloning this collection so HomeProxy and its runtime stay compatible.
+
 Two other source lines remain tracked for comparison:
 
 - `immortalwrt/homeproxy` is the canonical project origin.
@@ -22,8 +26,10 @@ outbound's `url` field.
 ## Updating
 
 1. Review changes from the VIKINGYFY package directory.
-2. Preserve the `main_urltest_url` form, UCI default, validation, and generator
+2. Sync the matching VIKINGYFY sing-box recipe in the same update.
+3. Preserve the `main_urltest_url` form, UCI default, validation, and generator
    mapping during every update.
-3. Compare major routing or migration changes with canonical ImmortalWrt before
+4. Compare major routing or migration changes with canonical ImmortalWrt before
    adopting them.
-4. Compile HomeProxy and inspect the generated package after every merge.
+5. Compile sing-box and HomeProxy and inspect the generated packages after every
+   merge.

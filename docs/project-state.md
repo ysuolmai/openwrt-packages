@@ -19,6 +19,7 @@ The collection currently owns:
 - `luci-app-ddns-go`
 - `luci-app-adguardhome`
 - `luci-theme-shadcn`
+- `sing-box`
 - `luci-app-homeproxy`
 - `moontvplus`
 - `luci-app-moontvplus`
@@ -32,6 +33,10 @@ longer the package source used by CI.
 HomeProxy uses the VIKINGYFY implementation rather than the previous
 `ysuolmai/homeproxy` fork. This is a substantial rewrite based on a newer
 sing-box architecture, not a small patch over ImmortalWrt HomeProxy.
+
+The VIKINGYFY sing-box recipe is mirrored in this collection as a required
+companion package. CI consumers must not pair this HomeProxy with the older
+ImmortalWrt packages feed recipe.
 
 The local delta is intentionally narrow:
 
@@ -59,8 +64,9 @@ See `docs/homeproxy-upstreams.md` for the update policy.
   must remain removed.
 
 Do not let later `jell` imports overwrite `frp`, DDNS-Go, or their LuCI apps.
-The VIKINGYFY package bundle may contain another HomeProxy copy; conflict
-cleanup before cloning this collection must remove it.
+The VIKINGYFY package bundle and standard feeds may contain other HomeProxy or
+sing-box copies; conflict cleanup before cloning this collection must remove
+both.
 
 MoonTVPlus is built from a pinned upstream commit as a native Node.js 24
 standalone application. It runs under procd without Docker. The service package
