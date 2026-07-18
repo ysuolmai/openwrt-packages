@@ -38,21 +38,12 @@ Remove conflicting feed and third-party copies before cloning this repository.
 FRP must not subsequently be overwritten by `kenzok8/jell` because the local
 version carries the service switches and defaults both services to disabled.
 
-## Validation and build host
+## Validation
 
 - Run `./scripts/validate.sh`, upstream checks, relevant shell syntax checks,
   and `git diff --check`.
-- Use the reusable Ubuntu build host at `root@172.28.1.1:7008`; fallback address
-  is `root@192.168.193.129:22`.
-- SSH with `~/.codex/ssh/codex_control_ed25519`.
-- The reusable ImmortalWrt IPQ60xx tree is
-  `/home/runner/wrt-cache/qualcommax/wrt`. Run builds as user `runner`.
 - If Go downloads through the default proxy time out, use
   `GOPROXY=https://goproxy.cn,direct`.
-- Retain source trees, downloads, staging toolchains, and ccache. After testing,
-  remove generated IPKs/images, package build directories, temporary files,
-  and task-specific logs.
-- Do not reinstall a GitHub Actions runner on the build host.
 
 ## Delivery
 
