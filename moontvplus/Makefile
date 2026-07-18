@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ysuolmai/MoonTVPlus.git
@@ -76,6 +76,8 @@ define Package/moontvplus/install
 	$(CP) $(PKG_BUILD_DIR)/public $(1)/usr/lib/moontvplus/
 	$(INSTALL_DIR) $(1)/usr/lib/moontvplus/.next
 	$(CP) $(PKG_BUILD_DIR)/.next/static $(1)/usr/lib/moontvplus/.next/
+	find $(1)/usr/lib/moontvplus -type f -exec sh -c \
+		'file "$$1" | grep -q "ELF .* x86-64" && rm -f "$$1" || true' sh {} \;
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/start.js $(1)/usr/lib/moontvplus/start.js
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/server.js $(1)/usr/lib/moontvplus/server.js
 	$(INSTALL_DIR) $(1)/usr/lib/moontvplus/src/lib

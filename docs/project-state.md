@@ -71,8 +71,10 @@ both.
 MoonTVPlus is built from a pinned upstream commit as a native Node.js 24
 standalone application. It runs under procd without Docker. The service package
 cross-compiles `better-sqlite3` for the OpenWrt target and omits optional
-`sharp`-based manga cover compression. `luci-app-moontvplus` owns its UCI,
-service control and log interface.
+`sharp`-based manga cover compression. Host x86-64 ELF files pulled into the
+Next.js standalone dependency tree are removed before OpenWrt dependency
+scanning and packaging. `luci-app-moontvplus` owns its UCI, service control and
+log interface.
 
 ## Build verification
 
