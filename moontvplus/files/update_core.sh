@@ -196,6 +196,7 @@ force="${2:-}"
 case "$component" in core|font) ;; *) fail "Usage: $0 {core|font} [force]";; esac
 core_dir="$(cfg core_dir)"; [ -n "$core_dir" ] || core_dir=/mnt/moontvplus/core
 release_repo="$(cfg release_repo)"; [ -n "$release_repo" ] || release_repo=ysuolmai/openwrt-packages
+release_tag="$(cfg release_tag)"; [ -n "$release_tag" ] || release_tag=moontvplus-core
 valid_path "$core_dir" || fail "Core directory must be an absolute path."
 case "$core_dir" in
 	/|*[!A-Za-z0-9_./+-]*) fail "Core directory contains unsupported characters.";;
@@ -204,6 +205,9 @@ case "$release_repo" in
 	/*|*/|*/*/*|*[!A-Za-z0-9_./-]*) fail "Release repository is invalid.";;
 	*/*) ;;
 	*) fail "Release repository must use the owner/repository form.";;
+esac
+case "$release_tag" in
+	''|*[!A-Za-z0-9._-]*) fail "Release tag is invalid.";;
 esac
 
 mkdir -p "$RUN_DIR" "$core_dir"
@@ -222,8 +226,8 @@ mkdir -p "$work_dir"
 echo running >"$RESULT_FILE"
 
 metadata="$work_dir/release.json"
-api="https://api.github.com/repos/$release_repo/releases/latest"
-echo "Checking the latest release in $release_repo."
+api="https://api.github.com/repos/$release_repo/releases/tags/$release_tag"
+echo "Checking release $release_tag in $release_repo."
 download_asset "$api" "$metadata"
 arch="$(sed -n '1p' /usr/share/moontvplus/core-arch)"
 [ -n "$arch" ] || fail "The package does not declare its target architecture."

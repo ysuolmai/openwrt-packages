@@ -43,6 +43,9 @@ msgstr "核心目录"
 msgid "Core release repository"
 msgstr "核心发布仓库"
 
+msgid "Core release tag"
+msgstr "核心发布标签"
+
 msgid "Use persistent external storage when router flash space is limited."
 msgstr "路由器闪存空间有限时，请使用持久化外部存储。"
 

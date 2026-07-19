@@ -1,0 +1,95 @@
+name: Publish MoonTVPlus core
+
+on:
+  workflow_run:
+    workflows: [Build IPQ60XX packages]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Build IPQ60XX packages run ID
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: moontvplus-core-release
+  cancel-in-progress: false
+
+env:
+  CORE_RELEASE_TAG: moontvplus-core
+  SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve source build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" --jq .head_sha)"
+          test -n "$source_sha"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+
+      - name: Download source artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          path: artifacts
+
+      - name: Collect and verify core assets
+        run: |
+          mkdir -p core-release
+          find artifacts -type f -name 'moontvplus-core_*.tar.gz' \
+            -exec cp -f {} core-release/ \;
+          find artifacts -type f -name 'moontvplus-core_*.tar.gz.sha256' \
+            -exec cp -f {} core-release/ \;
+          find artifacts -type f -name 'moontvplus-jassub-font_*.ttc' \
+            -exec cp -f {} core-release/ \;
+          find artifacts -type f -name 'moontvplus-jassub-font_*.ttc.sha256' \
+            -exec cp -f {} core-release/ \;
+          test -n "$(find core-release -type f -name 'moontvplus-core_*.tar.gz' -print -quit)"
+          test -n "$(find core-release -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)"
+          cd core-release
+          for checksum in *.sha256; do
+            sha256sum -c "$checksum"
+          done
+          find . -maxdepth 1 -type f -printf '%f\n' | sort >../current-assets.txt
+
+      - name: Publish dedicated core release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.CORE_RELEASE_TAG }}
+          name: MoonTVPlus OpenWrt Core
+          make_latest: false
+          overwrite_files: true
+          body: |
+            Stable update channel for the MoonTVPlus OpenWrt runtime.
+
+            Target: qualcommax / ipq60xx
+            Package collection commit: ${{ env.SOURCE_SHA }}
+            Source workflow run: ${{ env.SOURCE_RUN_ID }}
+
+            The application core and optional JASSUB CJK font are downloaded
+            on demand by luci-app-moontvplus. Every asset has a matching SHA256
+            file and the updater also validates architecture and Node ABI.
+          files: core-release/*
+
+      - name: Remove obsolete core assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$CORE_RELEASE_TAG" --jq .id)"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" --paginate \
+            --jq '.[] | "\(.id) \(.name)"' |
+          while read -r asset_id asset_name; do
+            grep -Fxq "$asset_name" current-assets.txt ||
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+          done

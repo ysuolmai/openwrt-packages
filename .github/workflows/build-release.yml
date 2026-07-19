@@ -258,19 +258,20 @@ jobs:
       - name: Collect MoonTVPlus runtime assets
         if: env.BUILD_MOONTV_CORE == '1'
         run: |
+          mkdir -p core-release
           find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-core_*.tar.gz' \
-            -exec cp -f {} release/ \;
+            -exec cp -f {} core-release/ \;
           find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-jassub-font_*.ttc' \
-            -exec cp -f {} release/ \;
-          test -n "$(find release -maxdepth 1 -type f -name 'moontvplus-core_*.tar.gz' -print -quit)" || {
+            -exec cp -f {} core-release/ \;
+          test -n "$(find core-release -maxdepth 1 -type f -name 'moontvplus-core_*.tar.gz' -print -quit)" || {
             echo "Missing MoonTVPlus core archive" >&2
             exit 1
           }
-          test -n "$(find release -maxdepth 1 -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)" || {
+          test -n "$(find core-release -maxdepth 1 -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)" || {
             echo "Missing MoonTVPlus optional font" >&2
             exit 1
           }
-          cd release
+          cd core-release
           for asset in moontvplus-core_*.tar.gz moontvplus-jassub-font_*.ttc; do
             sha256sum "$asset" >"$asset.sha256"
           done
@@ -299,6 +300,14 @@ jobs:
           path: release/*
           if-no-files-found: error
 
+      - name: Upload MoonTVPlus core artifacts
+        if: env.BUILD_MOONTV_CORE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: moontvplus-core-${{ github.run_id }}
+          path: core-release/*
+          if-no-files-found: error
+
       - name: Publish one release
         if: github.event_name == 'push' || (inputs.package == 'all' && inputs.format == 'both')
         uses: softprops/action-gh-release@v2
@@ -312,6 +321,6 @@ jobs:
             Package collection commit: ${{ github.sha }}
 
             This release contains both `.ipk` and `.apk` packages built for the
-            IPQ60XX target used by OpenWRT-CI. MoonTVPlus runtime archives and
-            their SHA256 files are downloaded on demand by luci-app-moontvplus.
+            IPQ60XX target used by OpenWRT-CI. MoonTVPlus runtime assets are
+            maintained separately in the `moontvplus-core` release.
           files: release/*

@@ -3,7 +3,9 @@
 This package builds MoonTVPlus as a native procd-managed Node.js service. It
 does not install or use Docker. The package itself contains only the service,
 configuration and core updater. The application runtime is published as a
-target-specific GitHub Release asset and is downloaded from LuCI on demand.
+target-specific asset in the dedicated `moontvplus-core` GitHub Release and is
+downloaded from LuCI on demand. Package collection releases contain only IPK
+and APK files, so unrelated package updates do not change the core channel.
 
 The runtime archive is checked against its SHA256 file, target architecture and
 Node module ABI before activation. Its SQLite native module is loaded against an

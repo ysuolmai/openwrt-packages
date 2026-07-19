@@ -193,6 +193,10 @@ return view.extend({
 		o.rmempty = false;
 		o.description = _('Save and apply repository or directory changes before downloading.');
 
+		o = s.option(form.Value, 'release_tag', _('Core release tag'));
+		o.default = 'moontvplus-core';
+		o.rmempty = false;
+
 		s = m.section(form.NamedSection, 'main', 'moontvplus', _('Storage'));
 		s.addremove = false;
 
