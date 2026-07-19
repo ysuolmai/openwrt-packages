@@ -4,12 +4,6 @@ on:
   workflow_run:
     workflows: [Build IPQ60XX packages]
     types: [completed]
-  workflow_dispatch:
-    inputs:
-      run_id:
-        description: Successful Build IPQ60XX packages run ID
-        required: true
-        type: string
 
 permissions:
   actions: read
@@ -21,11 +15,11 @@ concurrency:
 
 env:
   CORE_RELEASE_TAG: moontvplus-core
-  SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.run_id }}
+  SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
       - name: Resolve source build
@@ -45,6 +39,7 @@ jobs:
           path: artifacts
 
       - name: Collect and verify core assets
+        id: core_assets
         run: |
           mkdir -p core-release
           find artifacts -type f -name 'moontvplus-core_*.tar.gz' \
@@ -55,15 +50,28 @@ jobs:
             -exec cp -f {} core-release/ \;
           find artifacts -type f -name 'moontvplus-jassub-font_*.ttc.sha256' \
             -exec cp -f {} core-release/ \;
-          test -n "$(find core-release -type f -name 'moontvplus-core_*.tar.gz' -print -quit)"
-          test -n "$(find core-release -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)"
+          core_asset="$(find core-release -type f -name 'moontvplus-core_*.tar.gz' -print -quit)"
+          font_asset="$(find core-release -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)"
+          if [ -z "$core_asset" ] || [ -z "$font_asset" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No MoonTVPlus core assets in source run; nothing to publish."
+            exit 0
+          fi
           cd core-release
+          for asset in moontvplus-core_*.tar.gz moontvplus-jassub-font_*.ttc; do
+            test -f "$asset.sha256" || {
+              echo "Missing checksum for $asset" >&2
+              exit 1
+            }
+          done
           for checksum in *.sha256; do
             sha256sum -c "$checksum"
           done
           find . -maxdepth 1 -type f -printf '%f\n' | sort >../current-assets.txt
+          echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish dedicated core release
+        if: steps.core_assets.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.CORE_RELEASE_TAG }}
@@ -83,6 +91,7 @@ jobs:
           files: core-release/*
 
       - name: Remove obsolete core assets
+        if: steps.core_assets.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -1,6 +1,8 @@
 name: Build IPQ60XX packages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       package:
@@ -52,8 +54,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ inputs.package == 'all' && fromJSON('["frp","luci-app-frpc","luci-app-frps","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
-        format: ${{ inputs.format == 'both' && fromJSON('["ipk","apk"]') || fromJSON(format('["{0}"]', inputs.format)) }}
+        package: ${{ (inputs.package || 'all') == 'all' && fromJSON('["frp","luci-app-frpc","luci-app-frps","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+        format: ${{ (inputs.format || 'ipk') == 'both' && fromJSON('["ipk","apk"]') || fromJSON(format('["{0}"]', inputs.format || 'ipk')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 350
     env:
@@ -317,7 +319,7 @@ jobs:
 
   release:
     needs: build
-    if: inputs.package == 'all'
+    if: (inputs.package || 'all') == 'all'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
@@ -327,8 +329,8 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: packages-ipq60xx-${{ inputs.format }}-${{ github.run_number }}
-          name: IPQ60XX packages (${{ inputs.format }}) ${{ github.run_number }}
+          tag_name: packages-ipq60xx-${{ inputs.format || 'ipk' }}-${{ github.run_number }}
+          name: IPQ60XX packages (${{ inputs.format || 'ipk' }}) ${{ github.run_number }}
           generate_release_notes: true
           body: |
             Target: qualcommax / ipq60xx

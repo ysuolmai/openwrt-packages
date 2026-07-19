@@ -100,14 +100,14 @@ verification; staging toolchains and ccache were retained.
 
 ## Package release workflow
 
-- `.github/workflows/build-release.yml` manually builds selected packages in
-  an independent matrix Job for the OpenWRT-CI `IPQ60XX-WIFI-YES`
+- `.github/workflows/build-release.yml` automatically builds all packages as
+  independent IPK matrix Jobs on pushes to `main`, and also supports manually
+  building selected packages for the OpenWRT-CI `IPQ60XX-WIFI-YES`
   configuration (`qualcommax/ipq60xx`)
   using `VIKINGYFY/immortalwrt` `main`.
-- Pushes do not trigger package compilation. The separate validation workflow
-  remains the required automatic check. Manual `all` runs build IPK by default;
-  selecting `both` creates one Job per package and format, avoiding the former
-  all-package six-hour Job limit.
+- Pushes trigger the complete IPK package matrix. The separate validation
+  workflow remains an automatic check. Manual `all` runs build IPK by default;
+  selecting `both` creates one Job per package and format.
 - Before importing the collection, the workflow removes same-named packages
   installed from feeds or the source tree. This prevents feed versions from
   shadowing the locally maintained recipes.
@@ -115,8 +115,9 @@ verification; staging toolchains and ccache were retained.
   modules. A failed build or missing primary IPK/APK output fails the run.
 - Manual runs select one source package or all packages and choose IPK, APK, or
   both output formats. Every successful matrix Job uploads an Actions artifact;
-  an all-package run aggregates package files into one Release. MoonTVPlus core,
-  optional font, and checksums remain in the separate `moontvplus-core` Release.
+  an all-package run aggregates package files into one Release. A successful
+  build containing MoonTVPlus automatically updates the separate
+  `moontvplus-core` Release with its core, optional font, and checksums.
 - MoonTVPlus and its LuCI app use top-level `-j1` package builds without
   verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
   the Actions log pipe during its highly parallel install phase; other packages
