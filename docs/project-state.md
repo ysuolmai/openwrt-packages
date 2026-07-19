@@ -100,25 +100,23 @@ verification; staging toolchains and ccache were retained.
 
 ## Package release workflow
 
-- `.github/workflows/build-release.yml` builds the collection once for the
-  OpenWRT-CI `IPQ60XX-WIFI-YES` configuration (`qualcommax/ipq60xx`) using
-  `VIKINGYFY/immortalwrt` `main`.
-- The workflow injects every package owned by this repository, builds once with
-  `CONFIG_USE_APK=n` and once with `CONFIG_USE_APK=y`, and publishes all `.ipk`
-  and `.apk` files in one GitHub Release. It does not build firmware or any
-  other target platform.
+- `.github/workflows/build-release.yml` manually builds selected packages in
+  an independent matrix Job for the OpenWRT-CI `IPQ60XX-WIFI-YES`
+  configuration (`qualcommax/ipq60xx`)
+  using `VIKINGYFY/immortalwrt` `main`.
+- Pushes do not trigger package compilation. The separate validation workflow
+  remains the required automatic check. Manual `all` runs build IPK by default;
+  selecting `both` creates one Job per package and format, avoiding the former
+  all-package six-hour Job limit.
 - Before importing the collection, the workflow removes same-named packages
   installed from feeds or the source tree. This prevents feed versions from
   shadowing the locally maintained recipes.
 - The workflow builds the target kernel before packages that depend on kernel
-  modules. Every owned package is attempted, but any failed build or missing
-  primary IPK/APK output blocks the Release instead of producing a false-green
-  partial release.
-- Manual runs can select one source package and choose IPK, APK, or both output
-  formats. Focused runs upload Actions artifacts for diagnosis without creating
-  a partial GitHub Release; push builds and manual all-package builds retain the
-  complete Release path. Runs are independent and may execute concurrently, so
-  focused diagnostics do not block full collection builds.
+  modules. A failed build or missing primary IPK/APK output fails the run.
+- Manual runs select one source package or all packages and choose IPK, APK, or
+  both output formats. Every successful matrix Job uploads an Actions artifact;
+  an all-package run aggregates package files into one Release. MoonTVPlus core,
+  optional font, and checksums remain in the separate `moontvplus-core` Release.
 - MoonTVPlus and its LuCI app use top-level `-j1` package builds without
   verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
   the Actions log pipe during its highly parallel install phase; other packages

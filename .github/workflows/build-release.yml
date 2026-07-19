@@ -51,7 +51,16 @@ env:
 
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ inputs.package == 'all' && fromJSON('["frp","luci-app-frpc","luci-app-frps","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+        format: ${{ inputs.format == 'both' && fromJSON('["ipk","apk"]') || fromJSON(format('["{0}"]', inputs.format)) }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      SELECTED_PACKAGE: ${{ matrix.package }}
+      BUILD_FORMAT: ${{ matrix.format }}
     steps:
       - name: Checkout package collection
         uses: actions/checkout@v4
@@ -189,8 +198,8 @@ jobs:
             wrt/staging_dir/host*
             wrt/staging_dir/tool*
 
-      - name: Build IPK packages
-        if: env.BUILD_FORMAT == 'both' || env.BUILD_FORMAT == 'ipk'
+      - name: Build IPK package
+        if: matrix.format == 'ipk'
         run: |
           cd wrt
           mkdir -p "$GITHUB_WORKSPACE/release"
@@ -220,8 +229,8 @@ jobs:
           find bin/packages -type f -name '*.ipk' \
             -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
-      - name: Build APK packages
-        if: env.BUILD_FORMAT == 'both' || env.BUILD_FORMAT == 'apk'
+      - name: Build APK package
+        if: matrix.format == 'apk'
         run: |
           cd wrt
           mkdir -p "$GITHUB_WORKSPACE/release"
@@ -293,34 +302,41 @@ jobs:
             fi
           done
 
-      - name: Upload package artifacts
+      - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: packages-${{ env.SELECTED_PACKAGE }}-${{ env.BUILD_FORMAT }}-${{ github.run_number }}
+          name: packages-${{ matrix.package }}-${{ matrix.format }}-${{ github.run_number }}
           path: release/*
           if-no-files-found: error
 
       - name: Upload MoonTVPlus core artifacts
-        if: env.BUILD_MOONTV_CORE == '1'
+        if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
         uses: actions/upload-artifact@v4
         with:
           name: moontvplus-core-${{ github.run_id }}
           path: core-release/*
           if-no-files-found: error
 
-      - name: Publish one release
-        if: github.event_name == 'push' || (inputs.package == 'all' && inputs.format == 'both')
-        uses: softprops/action-gh-release@v2
+  release:
+    needs: build
+    if: inputs.package == 'all'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
         with:
-          tag_name: packages-ipq60xx-${{ github.run_number }}
-          name: IPQ60XX packages ${{ github.run_number }}
+          pattern: packages-*
+          path: release
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: packages-ipq60xx-${{ inputs.format }}-${{ github.run_number }}
+          name: IPQ60XX packages (${{ inputs.format }}) ${{ github.run_number }}
           generate_release_notes: true
           body: |
             Target: qualcommax / ipq60xx
             Source: ${{ env.OPENWRT_REPO }} (${{ env.OPENWRT_BRANCH }})
             Package collection commit: ${{ github.sha }}
 
-            This release contains both `.ipk` and `.apk` packages built for the
-            IPQ60XX target used by OpenWRT-CI. MoonTVPlus runtime assets are
-            maintained separately in the `moontvplus-core` release.
+            MoonTVPlus runtime assets are maintained separately in the
+            `moontvplus-core` release.
           files: release/*
