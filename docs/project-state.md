@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-18
+Last updated: 2026-07-19
 
 ## Purpose
 
@@ -119,6 +119,10 @@ verification; staging toolchains and ccache were retained.
   a partial GitHub Release; push builds and manual all-package builds retain the
   complete Release path. Runs are independent and may execute concurrently, so
   focused diagnostics do not block full collection builds.
+- MoonTVPlus and its LuCI app use top-level `-j1` package builds without
+  verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
+  the Actions log pipe during its highly parallel install phase; other packages
+  retain the normal runner-wide parallel build.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.

@@ -189,7 +189,18 @@ jobs:
           failures="$RUNNER_TEMP/ipk-build-failures.txt"
           : > "$failures"
           for package in $BUILD_PATHS; do
-            if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
+            case "$package" in
+              moontvplus|luci-app-moontvplus)
+                echo "Building $package with top-level -j1"
+                build_status=0
+                make "package/ysuolmai/$package/compile" -j1 || build_status=$?
+                ;;
+              *)
+                build_status=0
+                make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s || build_status=$?
+                ;;
+            esac
+            if [ "$build_status" -ne 0 ]; then
               printf '%s\n' "$package" >> "$failures"
             fi
           done
@@ -213,7 +224,18 @@ jobs:
           : > "$failures"
           for package in $BUILD_PATHS; do
             make "package/ysuolmai/$package/clean"
-            if ! make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s; then
+            case "$package" in
+              moontvplus|luci-app-moontvplus)
+                echo "Building $package with top-level -j1"
+                build_status=0
+                make "package/ysuolmai/$package/compile" -j1 || build_status=$?
+                ;;
+              *)
+                build_status=0
+                make "package/ysuolmai/$package/compile" -j"$(nproc)" V=s || build_status=$?
+                ;;
+            esac
+            if [ "$build_status" -ne 0 ]; then
               printf '%s\n' "$package" >> "$failures"
             fi
           done
