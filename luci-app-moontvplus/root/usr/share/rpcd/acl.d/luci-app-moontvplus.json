@@ -4,14 +4,14 @@
 		"read": {
 			"uci": [ "moontvplus" ],
 			"ubus": {
-				"luci.moontvplus": [ "status", "logs" ],
+				"luci.moontvplus": [ "status", "logs", "core_update_status" ],
 				"service": [ "list" ]
 			}
 		},
 		"write": {
 			"uci": [ "moontvplus" ],
 			"ubus": {
-				"luci.moontvplus": [ "control" ],
+				"luci.moontvplus": [ "control", "core_update_start" ],
 				"uci": [ "apply" ]
 			}
 		}

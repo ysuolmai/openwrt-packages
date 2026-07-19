@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ysuolmai/MoonTVPlus.git
@@ -24,7 +24,7 @@ define Package/moontvplus
   CATEGORY:=Multimedia
   TITLE:=MoonTVPlus media aggregation server
   URL:=https://github.com/ysuolmai/MoonTVPlus
-  DEPENDS:=@ARCH_64BIT @HAS_FPU +node +libstdcpp +libatomic
+  DEPENDS:=@ARCH_64BIT @HAS_FPU +node +libstdcpp +libatomic +curl +jsonfilter +ca-bundle
 endef
 
 define Package/moontvplus/description
@@ -39,21 +39,40 @@ endef
 
 NODEJS_CPU:=$(subst aarch64,arm64,$(subst x86_64,x64,$(ARCH)))
 PNPM:=$(STAGING_DIR_HOSTPKG)/bin/pnpm
-BETTER_SQLITE3_DIR:=$(PKG_BUILD_DIR)/node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3
+PNPM_FLAGS:=--config.manage-package-manager-versions=false
+PNPM_ENV:=npm_config_manage_package_manager_versions=false
+PNPM_STORE_DIR:=$(TMP_DIR)/pnpm-store/moontvplus
+BETTER_SQLITE3_VERSION:=12.6.2
+BETTER_SQLITE3_DIR:=$(PKG_BUILD_DIR)/node_modules/.pnpm/better-sqlite3@$(BETTER_SQLITE3_VERSION)/node_modules/better-sqlite3
+STANDALONE_BETTER_SQLITE3_DIR:=$(PKG_BUILD_DIR)/.next/standalone/node_modules/.pnpm/better-sqlite3@$(BETTER_SQLITE3_VERSION)/node_modules/better-sqlite3
+CORE_ARCH:=$(if $(ARCH_PACKAGES),$(ARCH_PACKAGES),$(ARCH))
+CORE_VERSION:=$(PKG_VERSION)-r$(PKG_RELEASE)
+CORE_ARTIFACT_DIR:=$(PKG_BUILD_DIR)/.openwrt-artifacts
+CORE_ROOT:=$(PKG_BUILD_DIR)/.openwrt-core
 
 define Build/Compile
-	mkdir -p $(PKG_BUILD_DIR)/.pnpm-home
+	mkdir -p $(PKG_BUILD_DIR)/.pnpm-home $(PNPM_STORE_DIR)
 	cd $(PKG_BUILD_DIR) && \
 		HOME=$(PKG_BUILD_DIR)/.pnpm-home \
 		CI=1 \
-		$(PNPM) install --frozen-lockfile --ignore-scripts --network-concurrency=8
+		$(PNPM_ENV) \
+		$(PNPM) $(PNPM_FLAGS) install --frozen-lockfile --ignore-scripts \
+			--network-concurrency=8 --store-dir=$(PNPM_STORE_DIR)
+	cd $(PKG_BUILD_DIR) && \
+		HOME=$(PKG_BUILD_DIR)/.pnpm-home \
+		CI=1 \
+		$(PNPM_ENV) \
+		DOCKER_ENV=true \
+		BUILD_TARGET=openwrt \
+		NODE_OPTIONS=--max-old-space-size=3072 \
+		$(STAGING_DIR_HOSTPKG)/bin/node scripts/generate-manifest.js
 	cd $(PKG_BUILD_DIR) && \
 		HOME=$(PKG_BUILD_DIR)/.pnpm-home \
 		CI=1 \
 		DOCKER_ENV=true \
 		BUILD_TARGET=openwrt \
 		NODE_OPTIONS=--max-old-space-size=3072 \
-		$(PNPM) run build
+		$(STAGING_DIR_HOSTPKG)/bin/node node_modules/next/dist/bin/next build
 	rm -rf $(BETTER_SQLITE3_DIR)/build
 	cd $(BETTER_SQLITE3_DIR) && \
 		$(MAKE_VARS) \
@@ -64,38 +83,64 @@ define Build/Compile
 		$(STAGING_DIR_HOSTPKG)/bin/node-gyp rebuild --release
 	$(TARGET_CROSS)strip --strip-unneeded \
 		$(BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node
-	find $(PKG_BUILD_DIR)/.next/standalone -name better_sqlite3.node \
-		-exec cp $(BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node {} \;
+	mkdir -p $(STANDALONE_BETTER_SQLITE3_DIR)/build/Release
+	cp $(BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node \
+		$(STANDALONE_BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node
+	find $(PKG_BUILD_DIR)/.next/standalone -type d -path '*/better-sqlite3/build/Release' \
+		-exec cp $(BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node {}/better_sqlite3.node \;
+	test -s $(STANDALONE_BETTER_SQLITE3_DIR)/build/Release/better_sqlite3.node
+
+	rm -rf $(CORE_ROOT) $(CORE_ARTIFACT_DIR)
+	mkdir -p $(CORE_ROOT)/moontvplus $(CORE_ARTIFACT_DIR)
+	$(CP) $(PKG_BUILD_DIR)/.next/standalone/. $(CORE_ROOT)/moontvplus/
+	$(CP) $(PKG_BUILD_DIR)/scripts $(CORE_ROOT)/moontvplus/
+	$(CP) $(PKG_BUILD_DIR)/migrations $(CORE_ROOT)/moontvplus/
+	$(CP) $(PKG_BUILD_DIR)/public $(CORE_ROOT)/moontvplus/
+	mkdir -p $(CORE_ROOT)/moontvplus/.next
+	$(CP) $(PKG_BUILD_DIR)/.next/static $(CORE_ROOT)/moontvplus/.next/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/start.js $(CORE_ROOT)/moontvplus/start.js
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/server.js $(CORE_ROOT)/moontvplus/server.js
+	mkdir -p $(CORE_ROOT)/moontvplus/src/lib
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/src/lib/tv-remote-hub.js \
+		$(CORE_ROOT)/moontvplus/src/lib/tv-remote-hub.js
+	rm -f $(CORE_ROOT)/moontvplus/public/screenshot1.png \
+		$(CORE_ROOT)/moontvplus/public/screenshot2.png \
+		$(CORE_ROOT)/moontvplus/public/screenshot3.png \
+		$(CORE_ROOT)/moontvplus/public/assets/jassub/NotoSansCJK-Regular.ttc
+	find $(CORE_ROOT)/moontvplus -type f -exec sh -c \
+		'file "$$$$1" | grep -q "ELF .* x86-64" && rm -f "$$$$1" || true' sh {} \;
+	node_abi="$$$$(sed -n 's/^#define NODE_MODULE_VERSION \([0-9][0-9]*\)$$$$/\1/p' \
+		$(STAGING_DIR)/usr/include/node/node_version.h)"; \
+	test -n "$$$$node_abi"; \
+	printf '%s\n' \
+		'version=$(CORE_VERSION)' \
+		'arch=$(CORE_ARCH)' \
+		"node_module_version=$$$$node_abi" \
+		>$(CORE_ROOT)/moontvplus/.moontvplus-core
+	tar -C $(CORE_ROOT) -czf \
+		$(CORE_ARTIFACT_DIR)/moontvplus-core_$(CORE_VERSION)_$(CORE_ARCH).tar.gz \
+		moontvplus
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/public/assets/jassub/NotoSansCJK-Regular.ttc \
+		$(CORE_ARTIFACT_DIR)/moontvplus-jassub-font_$(CORE_VERSION).ttc
 endef
 
 define Package/moontvplus/install
-	$(INSTALL_DIR) $(1)/usr/lib/moontvplus
-	$(CP) $(PKG_BUILD_DIR)/.next/standalone/. $(1)/usr/lib/moontvplus/
-	$(CP) $(PKG_BUILD_DIR)/scripts $(1)/usr/lib/moontvplus/
-	$(CP) $(PKG_BUILD_DIR)/migrations $(1)/usr/lib/moontvplus/
-	$(CP) $(PKG_BUILD_DIR)/public $(1)/usr/lib/moontvplus/
-	$(INSTALL_DIR) $(1)/usr/lib/moontvplus/.next
-	$(CP) $(PKG_BUILD_DIR)/.next/static $(1)/usr/lib/moontvplus/.next/
-	find $(1)/usr/lib/moontvplus -type f -exec sh -c \
-		'file "$$$$1" | grep -q "ELF .* x86-64" && rm -f "$$$$1" || true' sh {} \;
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/start.js $(1)/usr/lib/moontvplus/start.js
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/server.js $(1)/usr/lib/moontvplus/server.js
-	$(INSTALL_DIR) $(1)/usr/lib/moontvplus/src/lib
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/src/lib/tv-remote-hub.js \
-		$(1)/usr/lib/moontvplus/src/lib/tv-remote-hub.js
-
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/moontvplus.config $(1)/etc/config/moontvplus
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/moontvplus.init $(1)/etc/init.d/moontvplus
+	$(INSTALL_DIR) $(1)/usr/share/moontvplus
+	$(INSTALL_BIN) ./files/update_core.sh $(1)/usr/share/moontvplus/update_core.sh
+	printf '%s\n' '$(CORE_ARCH)' >$(1)/usr/share/moontvplus/core-arch
+	printf '%s\n' '$(CORE_VERSION)' >$(1)/usr/share/moontvplus/package-version
 	$(INSTALL_DIR) $(1)/etc/moontvplus
 endef
 
 define Package/moontvplus/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	mkdir -p /etc/moontvplus /mnt/moontvplus/downloads
-	chown nobody:nogroup /etc/moontvplus /mnt/moontvplus /mnt/moontvplus/downloads 2>/dev/null || true
+	mkdir -p /etc/moontvplus /mnt/moontvplus/core /mnt/moontvplus/downloads
+	chown nobody:nogroup /etc/moontvplus /mnt/moontvplus/downloads 2>/dev/null || true
 	/etc/init.d/moontvplus enable >/dev/null 2>&1 || true
 }
 exit 0

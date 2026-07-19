@@ -234,8 +234,10 @@
       ],
       "sync_strategy": "pinned-source-build",
       "local_changes": [
-        "Build the Next.js standalone application for native procd deployment without Docker",
-        "Cross-compile better-sqlite3 for the OpenWrt target ABI",
+        "Build a downloadable Next.js standalone core for native procd deployment without Docker",
+        "Keep the installed package lightweight and activate release cores atomically with rollback",
+        "Cross-compile and runtime-check better-sqlite3 for the OpenWrt target ABI",
+        "Publish the large JASSUB CJK font as an optional runtime asset",
         "Disable optional sharp-based manga cover compression to avoid shipping libvips"
       ]
     },
@@ -253,7 +255,7 @@
       ],
       "sync_strategy": "self-maintained",
       "local_changes": [
-        "Provide native JavaScript LuCI configuration, service control and log viewing",
+        "Provide native JavaScript LuCI configuration, service control, core management and log viewing",
         "Map UCI settings to the MoonTVPlus environment through a narrow rpcd interface"
       ]
     }

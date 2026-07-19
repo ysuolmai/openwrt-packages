@@ -18,10 +18,34 @@ var callControl = rpc.declare({
 	expect: {}
 });
 
+var callCoreUpdateStart = rpc.declare({
+	object: 'luci.moontvplus',
+	method: 'core_update_start',
+	params: [ 'component', 'force' ],
+	expect: {}
+});
+
+var callCoreUpdateStatus = rpc.declare({
+	object: 'luci.moontvplus',
+	method: 'core_update_status',
+	expect: {}
+});
+
 function statusText(status) {
 	if (status.running)
 		return E('span', { style: 'color:#16a34a;font-weight:600' }, _('Running'));
 	return E('span', { style: 'color:#dc2626;font-weight:600' }, _('Stopped'));
+}
+
+function coreStatusText(status) {
+	if (status.core_installed)
+		return E('span', { style: 'color:#16a34a;font-weight:600' },
+			status.core_version || _('Installed'));
+	return E('span', { style: 'color:#dc2626;font-weight:600' }, _('Not installed'));
+}
+
+function fontStatusText(status) {
+	return status.font_installed ? _('Installed') : _('Not installed');
 }
 
 return view.extend({
@@ -32,6 +56,11 @@ return view.extend({
 	render: function(status) {
 		var m, s, o;
 		var statusNode = E('span', {}, statusText(status));
+		var coreNode = E('span', {}, coreStatusText(status));
+		var fontNode = E('span', {}, fontStatusText(status));
+		var updateLog = E('pre', {
+			style: 'display:none;max-height:16em;overflow:auto;white-space:pre-wrap;margin-top:1em'
+		});
 
 		m = new form.Map('moontvplus', _('MoonTVPlus'),
 			_('Run MoonTVPlus directly under procd without Docker. Apply changes before restarting the service.'));
@@ -40,8 +69,16 @@ return view.extend({
 		s.anonymous = true;
 		s.render = function() {
 			poll.add(function() {
-				return callStatus().then(function(result) {
-					statusNode.replaceChildren(statusText(result));
+				return Promise.all([ callStatus(), callCoreUpdateStatus() ]).then(function(results) {
+					var current = results[0];
+					var update = results[1];
+					statusNode.replaceChildren(statusText(current));
+					coreNode.replaceChildren(coreStatusText(current));
+					fontNode.replaceChildren(fontStatusText(current));
+					if (update.log) {
+						updateLog.style.display = '';
+						updateLog.textContent = update.log;
+					}
 				});
 			});
 
@@ -76,6 +113,25 @@ return view.extend({
 				}
 			}, _('Open MoonTVPlus'));
 
+			function updateButton(component, label) {
+				return E('button', {
+					'class': 'cbi-button cbi-button-action',
+					click: function(ev) {
+						ev.preventDefault();
+						ev.currentTarget.disabled = true;
+						return callCoreUpdateStart(component, false).then(function(result) {
+							if (!result.success)
+								throw new Error(result.error || _('Unable to start the download'));
+							ui.addNotification(null, E('p', {}, _('Download started')));
+						}).catch(function(err) {
+							ui.addNotification(null, E('p', {}, err.message), 'error');
+						}).finally(function() {
+							ev.currentTarget.disabled = false;
+						});
+					}
+				}, label);
+			}
+
 			return E('div', { 'class': 'cbi-section' }, [
 				E('p', {}, [ _('Service status') + ': ', statusNode ]),
 				E('div', {}, [
@@ -83,7 +139,15 @@ return view.extend({
 					controlButton('restart', _('Restart'), 'cbi-button-reload'), ' ',
 					controlButton('stop', _('Stop'), 'cbi-button-negative'), ' ',
 					open
-				])
+				]),
+				E('hr'),
+				E('p', {}, [ _('Application core') + ': ', coreNode ]),
+				E('p', {}, [ _('Optional subtitle font') + ': ', fontNode ]),
+				E('div', {}, [
+					updateButton('core', status.core_installed ? _('Update core') : _('Download core')), ' ',
+					updateButton('font', status.font_installed ? _('Update subtitle font') : _('Download subtitle font'))
+				]),
+				updateLog
 			]);
 		};
 
@@ -115,6 +179,19 @@ return view.extend({
 		o = s.option(form.Flag, 'respawn', _('Restart after a crash'));
 		o.default = '1';
 		o.rmempty = false;
+
+		s = m.section(form.NamedSection, 'main', 'moontvplus', _('Application core'));
+		s.addremove = false;
+
+		o = s.option(form.Value, 'core_dir', _('Core directory'));
+		o.default = '/mnt/moontvplus/core';
+		o.rmempty = false;
+		o.description = _('Use persistent external storage when router flash space is limited.');
+
+		o = s.option(form.Value, 'release_repo', _('Core release repository'));
+		o.default = 'ysuolmai/openwrt-packages';
+		o.rmempty = false;
+		o.description = _('Save and apply repository or directory changes before downloading.');
 
 		s = m.section(form.NamedSection, 'main', 'moontvplus', _('Storage'));
 		s.addremove = false;

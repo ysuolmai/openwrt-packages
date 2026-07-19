@@ -82,6 +82,14 @@ jobs:
           esac
           echo "BUILD_PATHS=$build_paths" >> "$GITHUB_ENV"
           echo "EXPECTED_PACKAGES=$expected_packages" >> "$GITHUB_ENV"
+          case " $build_paths " in
+            *" moontvplus "*|*" luci-app-moontvplus "*)
+              echo "BUILD_MOONTV_CORE=1" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "BUILD_MOONTV_CORE=0" >> "$GITHUB_ENV"
+              ;;
+          esac
 
       - name: Prepare build environment
         env:
@@ -247,6 +255,26 @@ jobs:
           find bin/packages -type f -name '*.apk' \
             -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
+      - name: Collect MoonTVPlus runtime assets
+        if: env.BUILD_MOONTV_CORE == '1'
+        run: |
+          find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-core_*.tar.gz' \
+            -exec cp -f {} release/ \;
+          find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-jassub-font_*.ttc' \
+            -exec cp -f {} release/ \;
+          test -n "$(find release -maxdepth 1 -type f -name 'moontvplus-core_*.tar.gz' -print -quit)" || {
+            echo "Missing MoonTVPlus core archive" >&2
+            exit 1
+          }
+          test -n "$(find release -maxdepth 1 -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)" || {
+            echo "Missing MoonTVPlus optional font" >&2
+            exit 1
+          }
+          cd release
+          for asset in moontvplus-core_*.tar.gz moontvplus-jassub-font_*.ttc; do
+            sha256sum "$asset" >"$asset.sha256"
+          done
+
       - name: Verify package output
         run: |
           for package in $EXPECTED_PACKAGES; do
@@ -284,5 +312,6 @@ jobs:
             Package collection commit: ${{ github.sha }}
 
             This release contains both `.ipk` and `.apk` packages built for the
-            IPQ60XX target used by OpenWRT-CI.
+            IPQ60XX target used by OpenWRT-CI. MoonTVPlus runtime archives and
+            their SHA256 files are downloaded on demand by luci-app-moontvplus.
           files: release/*

@@ -4,8 +4,6 @@ USE_PROCD=1
 START=99
 STOP=10
 
-APP_DIR=/usr/lib/moontvplus
-
 append_env() {
 	local name="$1"
 	local value="$2"
@@ -13,7 +11,7 @@ append_env() {
 }
 
 start_service() {
-	local enabled port username password site_name storage_type
+	local enabled port username password site_name storage_type core_dir app_dir
 	local data_dir download_dir enable_tv_mode enable_offline_download
 	local watch_room_enabled watch_room_server_type watch_room_external_url
 	local watch_room_external_auth redis_url kvrocks_url
@@ -28,6 +26,7 @@ start_service() {
 	config_get password main password
 	config_get site_name main site_name MoonTVPlus
 	config_get storage_type main storage_type d1
+	config_get core_dir main core_dir /mnt/moontvplus/core
 	config_get data_dir main data_dir /etc/moontvplus
 	config_get download_dir main download_dir /mnt/moontvplus/downloads
 	config_get_bool enable_tv_mode main enable_tv_mode 1
@@ -47,6 +46,15 @@ start_service() {
 		logger -t moontvplus 'refusing to start: administrator password is empty'
 		return 1
 	}
+	case "$core_dir" in
+		/*) ;;
+		*) logger -t moontvplus 'core directory must be an absolute path'; return 1;;
+	esac
+	app_dir="$core_dir/current"
+	[ -f "$app_dir/.moontvplus-core" ] && [ -f "$app_dir/start.js" ] || {
+		logger -t moontvplus 'core is not installed; download it from LuCI first'
+		return 1
+	}
 
 	mkdir -p "$data_dir" "$download_dir"
 	chown nobody:nogroup "$data_dir" "$download_dir" 2>/dev/null || true
@@ -54,11 +62,11 @@ start_service() {
 	# start.js regenerates this file. Prepare it as root so the unprivileged
 	# service can update the PWA name without making the application writable.
 	NEXT_PUBLIC_SITE_NAME="$site_name" /usr/bin/node \
-		"$APP_DIR/scripts/generate-manifest.js" >/dev/null 2>&1 || true
-	chown nobody:nogroup "$APP_DIR/public/manifest.json" 2>/dev/null || true
+		"$app_dir/scripts/generate-manifest.js" >/dev/null 2>&1 || true
+	chown nobody:nogroup "$app_dir/public/manifest.json" 2>/dev/null || true
 
 	procd_open_instance
-	procd_set_param command /usr/bin/node "$APP_DIR/start.js"
+	procd_set_param command /usr/bin/node "$app_dir/start.js"
 	procd_set_param user nobody
 	procd_set_param group nogroup
 	procd_set_param env \
