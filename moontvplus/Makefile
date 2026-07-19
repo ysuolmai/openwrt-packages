@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 MOONTVPLUS_BUILD_CORE?=0
 
@@ -11,7 +11,7 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ysuolmai/MoonTVPlus.git
 PKG_SOURCE_VERSION:=720db22bea9f9798ecc00cc2c7c0127813f5e256
 PKG_MIRROR_HASH:=skip
-PKG_BUILD_DEPENDS:=node/host node-gyp/host node-pnpm/host
+PKG_BUILD_DEPENDS:=node/host node node-gyp/host node-pnpm/host
 endif
 
 PKG_MAINTAINER:=ysuolmai
@@ -28,7 +28,7 @@ define Package/moontvplus
   CATEGORY:=Multimedia
   TITLE:=MoonTVPlus media aggregation server
   URL:=https://github.com/ysuolmai/MoonTVPlus
-  DEPENDS:=@ARCH_64BIT @HAS_FPU +node +libstdcpp +libatomic +curl +jsonfilter +ca-bundle
+  DEPENDS:=@ARCH_64BIT @HAS_FPU +libstdcpp +libatomic +libopenssl +zlib +libnghttp2 +libcares +curl +jsonfilter +ca-bundle
 endef
 
 define Package/moontvplus/description
@@ -115,6 +115,9 @@ define Build/Compile
 		$(CORE_ROOT)/moontvplus/public/assets/jassub/NotoSansCJK-Regular.ttc
 	find $(CORE_ROOT)/moontvplus -type f -exec sh -c \
 		'file "$$$$1" | grep -q "ELF .* x86-64" && rm -f "$$$$1" || true' sh {} \;
+	test -x $(STAGING_DIR_ROOT)/usr/bin/node
+	$(INSTALL_BIN) $(STAGING_DIR_ROOT)/usr/bin/node $(CORE_ROOT)/moontvplus/node
+	$(TARGET_CROSS)strip --strip-unneeded $(CORE_ROOT)/moontvplus/node
 	node_abi="$$$$(sed -n 's/^#define NODE_MODULE_VERSION \([0-9][0-9]*\)$$$$/\1/p' \
 		$(STAGING_DIR)/usr/include/node/node_version.h)"; \
 	test -n "$$$$node_abi"; \

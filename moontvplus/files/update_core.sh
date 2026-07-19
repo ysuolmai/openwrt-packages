@@ -92,7 +92,7 @@ install_core() {
 	local arch="$2"
 	local force="$3"
 	local url checksum_url archive checksum_file checksum marker_version marker_arch marker_abi
-	local runtime_abi target old_link new_link candidate list
+	local runtime_abi target old_link new_link candidate list node_bin
 	url="$(find_asset_url "$metadata" "moontvplus-core_*_${arch}.tar.gz")"
 	[ -n "$url" ] || fail "No MoonTVPlus core is available for architecture $arch."
 	checksum_url="$url.sha256"
@@ -124,19 +124,21 @@ install_core() {
 	tar -xzf "$archive" -C "$work_dir/extract"
 	candidate="$work_dir/extract/moontvplus"
 	[ -s "$candidate/.moontvplus-core" ] || fail "Core metadata is missing."
+	node_bin="$candidate/node"
+	[ -x "$node_bin" ] || fail "Core Node runtime is missing."
 	marker_version="$(sed -n 's/^version=//p' "$candidate/.moontvplus-core")"
 	marker_arch="$(sed -n 's/^arch=//p' "$candidate/.moontvplus-core")"
 	marker_abi="$(sed -n 's/^node_module_version=//p' "$candidate/.moontvplus-core")"
 	case "$marker_version" in *[!A-Za-z0-9._-]*|'') fail "Core version is invalid.";; esac
 	[ "$marker_arch" = "$arch" ] || fail "Core architecture does not match this package."
-	runtime_abi="$(node -p 'process.versions.modules' 2>/dev/null || true)"
+	runtime_abi="$("$node_bin" -p 'process.versions.modules' 2>/dev/null || true)"
 	[ "$marker_abi" = "$runtime_abi" ] || \
 		fail "Core requires Node module ABI $marker_abi, but the installed Node provides $runtime_abi."
 	link_optional_font "$candidate"
 	validate_links "$candidate"
 	(
 		cd "$candidate" || exit 1
-		node -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close()"
+		./node -e "const Database=require('better-sqlite3'); const db=new Database(':memory:'); db.close()"
 	) >/dev/null 2>&1 || fail "The downloaded SQLite module failed its runtime check."
 	printf 'url=%s\nsha256=%s\n' "$url" "$checksum" >"$candidate/.moontvplus-source"
 
