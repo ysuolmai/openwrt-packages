@@ -2,18 +2,22 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
+MOONTVPLUS_BUILD_CORE?=0
+
+ifeq ($(MOONTVPLUS_BUILD_CORE),1)
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ysuolmai/MoonTVPlus.git
 PKG_SOURCE_VERSION:=720db22bea9f9798ecc00cc2c7c0127813f5e256
 PKG_MIRROR_HASH:=skip
+PKG_BUILD_DEPENDS:=node/host node-gyp/host node-pnpm/host
+endif
 
 PKG_MAINTAINER:=ysuolmai
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 
-PKG_BUILD_DEPENDS:=node/host node-gyp/host node-pnpm/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
@@ -37,6 +41,10 @@ define Package/moontvplus/conffiles
 /etc/moontvplus/
 endef
 
+CORE_ARCH:=$(if $(ARCH_PACKAGES),$(ARCH_PACKAGES),$(ARCH))
+CORE_VERSION:=$(PKG_VERSION)-r$(PKG_RELEASE)
+
+ifeq ($(MOONTVPLUS_BUILD_CORE),1)
 NODEJS_CPU:=$(subst aarch64,arm64,$(subst x86_64,x64,$(ARCH)))
 PNPM:=$(STAGING_DIR_HOSTPKG)/bin/pnpm
 PNPM_FLAGS:=--config.manage-package-manager-versions=false
@@ -45,8 +53,6 @@ PNPM_STORE_DIR:=$(TMP_DIR)/pnpm-store/moontvplus
 BETTER_SQLITE3_VERSION:=12.6.2
 BETTER_SQLITE3_DIR:=$(PKG_BUILD_DIR)/node_modules/.pnpm/better-sqlite3@$(BETTER_SQLITE3_VERSION)/node_modules/better-sqlite3
 STANDALONE_BETTER_SQLITE3_DIR:=$(PKG_BUILD_DIR)/.next/standalone/node_modules/.pnpm/better-sqlite3@$(BETTER_SQLITE3_VERSION)/node_modules/better-sqlite3
-CORE_ARCH:=$(if $(ARCH_PACKAGES),$(ARCH_PACKAGES),$(ARCH))
-CORE_VERSION:=$(PKG_VERSION)-r$(PKG_RELEASE)
 CORE_ARTIFACT_DIR:=$(PKG_BUILD_DIR)/.openwrt-artifacts
 CORE_ROOT:=$(PKG_BUILD_DIR)/.openwrt-core
 
@@ -123,6 +129,15 @@ define Build/Compile
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/public/assets/jassub/NotoSansCJK-Regular.ttc \
 		$(CORE_ARTIFACT_DIR)/moontvplus-jassub-font_$(CORE_VERSION).ttc
 endef
+else
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+endef
+
+define Build/Compile
+	:
+endef
+endif
 
 define Package/moontvplus/install
 	$(INSTALL_DIR) $(1)/etc/config

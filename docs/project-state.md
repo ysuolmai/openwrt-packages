@@ -122,6 +122,10 @@ verification; staging toolchains and ccache were retained.
   verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
   the Actions log pipe during its highly parallel install phase; other packages
   retain the normal runner-wide parallel build.
+- The `moontvplus` recipe is lightweight by default: firmware builds package
+  only the service, updater, and configuration files. The source checkout,
+  Node.js host tools, pnpm install, Next.js build, and native module build are
+  enabled only when the dedicated core Job passes `MOONTVPLUS_BUILD_CORE=1`.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.
