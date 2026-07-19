@@ -24,12 +24,12 @@ on:
       format:
         description: Package format to build
         required: true
-        default: both
+        default: ipk
         type: choice
         options:
-          - both
           - ipk
           - apk
+          - both
 
 permissions:
   contents: write
@@ -45,7 +45,7 @@ env:
     luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
     moontvplus luci-app-moontvplus
   SELECTED_PACKAGE: ${{ inputs.package || 'all' }}
-  BUILD_FORMAT: ${{ inputs.format || 'both' }}
+  BUILD_FORMAT: ${{ inputs.format || 'ipk' }}
 
 jobs:
   build:
