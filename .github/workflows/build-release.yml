@@ -205,18 +205,22 @@ jobs:
             wrt/staging_dir/host*
             wrt/staging_dir/toolchain-*
 
-      - name: Build MoonTVPlus host tools
+      - name: Build MoonTVPlus build dependencies
         if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
         run: |
           cd wrt
-          # Direct package targets do not reliably expand host build
-          # dependencies, so stage Node, node-gyp and pnpm explicitly.
+          # Direct package targets do not reliably expand build dependencies,
+          # so stage both the host tools and target Node headers explicitly.
           make package/feeds/packages/node/host/compile -j1 V=s
           make package/feeds/packages/node-gyp/host/compile -j1 V=s
           make package/feeds/packages/node-pnpm/host/compile -j1 V=s
+          make package/feeds/packages/node/compile -j1 V=s
           test -x staging_dir/hostpkg/bin/node
           test -x staging_dir/hostpkg/bin/node-gyp
           test -x staging_dir/hostpkg/bin/pnpm
+          test -s staging_dir/target-*/usr/common.gypi
+          test -s staging_dir/target-*/usr/include/node/node_version.h
+          test -x staging_dir/target-*/root-*/usr/bin/node
 
       - name: Build IPK package
         if: matrix.format == 'ipk'

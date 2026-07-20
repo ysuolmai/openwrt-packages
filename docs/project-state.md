@@ -127,6 +127,11 @@ verification; staging toolchains and ccache were retained.
   verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
   the Actions log pipe during its highly parallel install phase; other packages
   retain the normal runner-wide parallel build.
+- The workflow restores a stable OpenWrt host/toolchain cache and skips
+  `make toolchain/install` on an exact cache hit. MoonTVPlus core Jobs also
+  compile the target `node` package explicitly before `better-sqlite3`; Actions
+  run `29734454128` showed that host Node tools alone do not stage the required
+  target `common.gypi`, Node headers, or runtime binary on a clean runner.
 - The `moontvplus` recipe is lightweight by default: firmware builds package
   only the service, updater, and configuration files. The source checkout,
   target Node.js runtime, Node.js host tools, pnpm install, Next.js build, and
