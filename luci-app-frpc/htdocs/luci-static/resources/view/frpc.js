@@ -6,8 +6,11 @@
 'require tools.widgets as widgets';
 
 //	[Widget, Option, Title, Description, {Param: 'Value'}],
-const startupConf = [
+const enabledConf = [
 	[form.Flag, 'enabled', _('Enabled'), undefined, {default: '0', rmempty: false}],
+];
+
+const startupConf = [
 	[form.Flag, 'stdout', _('Log stdout')],
 	[form.Flag, 'stderr', _('Log stderr')],
 	[widgets.UserSelect, 'user', _('Run daemon as user')],
@@ -170,7 +173,7 @@ function renderStatus(isRunning) {
 
 return view.extend({
 	render() {
-		let m, s, o;
+		let m, s, o, ss;
 
 		m = new form.Map('frpc', _('frp Client'));
 
@@ -198,6 +201,12 @@ return view.extend({
 
 		s.tab('common', _('Common Settings'));
 		s.tab('init', _('Startup Settings'));
+
+		o = s.taboption('common', form.SectionValue, '_enabled', form.TypedSection, 'init');
+		ss = o.subsection;
+		ss.anonymous = true;
+		ss.dynamic = true;
+		defOpts(ss, enabledConf);
 
 		defTabOpts(s, 'common', commonConf, {optional: true});
 

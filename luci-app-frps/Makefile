@@ -6,6 +6,7 @@ LUCI_TITLE:=LuCI Support for frp server
 LUCI_DEPENDS:=+luci-base +frps
 
 PKG_LICENSE:=Apache-2.0
+PKG_RELEASE:=2
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

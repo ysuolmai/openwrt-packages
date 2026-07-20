@@ -24,6 +24,11 @@ The collection currently owns:
 - `moontvplus`
 - `luci-app-moontvplus`
 
+The FRPC and FRPS service switches are shown under Common Settings while still
+writing the `init.enabled` UCI option used by their init scripts. DDNS-Go
+migrates the legacy `config` section and option names to the current `main`
+service section so its LuCI enable switch controls startup correctly.
+
 Detailed upstream commits and local changes are stored in `upstreams.json`.
 The standalone `ysuolmai` repositories remain available as history but are no
 longer the package source used by CI.

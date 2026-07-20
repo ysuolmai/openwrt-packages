@@ -62,7 +62,7 @@ const methods = {
 			let action = enabled
 				? '/etc/init.d/ddns-go enable && /etc/init.d/ddns-go restart'
 				: '/etc/init.d/ddns-go stop && /etc/init.d/ddns-go disable';
-			let pipe = popen(`uci -q set ddns-go.main.enabled=${value} && uci -q commit ddns-go && ${action} 2>&1`);
+			let pipe = popen(`uci -q set ddns-go.main=service && uci -q set ddns-go.main.enabled=${value} && uci -q commit ddns-go && ${action} 2>&1`);
 			if (!pipe)
 				return { saved: false, enabled: !enabled, error: 'unable to control ddns-go service' };
 

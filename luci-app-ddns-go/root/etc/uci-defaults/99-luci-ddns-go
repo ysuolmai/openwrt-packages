@@ -1,5 +1,23 @@
 #!/bin/sh
 
+if ! uci -q get ddns-go.main >/dev/null; then
+	if uci -q get ddns-go.config >/dev/null; then
+		uci -q rename ddns-go.config=main
+	else
+		uci -q set ddns-go.main=service
+	fi
+	uci -q set ddns-go.main=service
+
+	for mapping in time:interval ctimes:cache_times skipverify:skip_verify; do
+		old="${mapping%%:*}"
+		new="${mapping#*:}"
+		value="$(uci -q get "ddns-go.main.$old")"
+		[ -z "$value" ] || uci -q set "ddns-go.main.$new=$value"
+		uci -q delete "ddns-go.main.$old"
+	done
+	uci -q commit ddns-go
+fi
+
 chmod 755 /usr/share/rpcd/ucode/luci.ddns-go
 rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
 [ -n "$IPKG_INSTROOT" ] || /etc/init.d/rpcd restart
