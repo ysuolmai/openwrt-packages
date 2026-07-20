@@ -135,3 +135,11 @@ verification; staging toolchains and ccache were retained.
 - `ysuolmai/amlogic-s9xxx-openwrt`: source migration commit `6d0ad9c`, rebased
   after remote commit `bfd5c09` removed the superseded DDNS patch files.
 - `ysuolmai/CloseWRT-CI`: source migration commit `d3c41e4`.
+
+HomeProxy requires the matching maintained `sing-box` recipe. Consumer import
+cleanup must remove the feed copy of `sing-box` before cloning this collection;
+otherwise the older feed package can fail HomeProxy's minimum-version check.
+This was verified and fixed in `openwrt-ci2` commit `1eb87fa`, all three
+`amlogic-s9xxx-openwrt` source variants in commit `aa656bb`, and `CloseWRT-CI`
+commit `10f89e7`. `OpenWRT-CI` already included `sing-box` in its conflict
+cleanup list.
