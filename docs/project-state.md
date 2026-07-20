@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-19
+Last updated: 2026-07-20
 
 ## Purpose
 
@@ -40,7 +40,7 @@ ImmortalWrt packages feed recipe.
 
 The local delta is intentionally narrow:
 
-- Dashboard field for the main URLTest URL.
+- Routing field for the main URLTest URL, next to the URLTest node selection.
 - MIUI, HiCloud, Cloudflare, and Google `generate_204` presets.
 - Custom HTTP/HTTPS URL validation.
 - UCI default `https://www.gstatic.com/generate_204`.
@@ -91,7 +91,7 @@ The remote ImmortalWrt IPQ60xx build verified these packages successfully:
 - `luci-app-homeproxy_20260717-r3_all.ipk`
 - `luci-i18n-homeproxy-zh-cn_20260717-r3_all.ipk`
 
-The HomeProxy IPK was unpacked and checked for the Dashboard field, default UCI
+The HomeProxy IPK was unpacked and checked for the URLTest field, default UCI
 value, and generator mapping. The translation was converted successfully with
 the OpenWrt `po2lmo` tool. Generated build output and logs were removed after
 verification; staging toolchains and ccache were retained.

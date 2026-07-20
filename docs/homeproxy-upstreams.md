@@ -17,7 +17,8 @@ Two other source lines remain tracked for comparison:
 
 ## Local patch
 
-The primary URLTest outbound has a configurable test URL on the Dashboard tab.
+The primary URLTest outbound has a configurable test URL on the Routing tab,
+next to the main URLTest node selection.
 The LuCI form offers several common `generate_204` endpoints and accepts a
 custom HTTP or HTTPS URL. The value is stored as
 `homeproxy.config.main_urltest_url` and emitted as the sing-box URLTest

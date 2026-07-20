@@ -210,6 +210,15 @@ return view.extend({
 		o.rmempty = false;
 		o.retain = true;
 
+		o = s.taboption('routing', form.Value, 'main_urltest_url', _('URLTest URL'),
+			_('The URL used by the main URLTest group.'));
+		addURLTestChoices(o);
+		o.default = 'https://www.gstatic.com/generate_204';
+		o.rmempty = false;
+		o.validate = validateURLTestURL;
+		o.depends('main_node', 'urltest');
+		o.retain = true;
+
 		o = s.taboption('routing', form.Value, 'main_urltest_interval', _('Test interval'),
 			_('The test interval in seconds.'));
 		o.datatype = 'uinteger';
@@ -356,15 +365,6 @@ return view.extend({
 		o = s.taboption('dashboard', form.Value, 'dashboard_secret', _('API secret'));
 		o.password = true;
 		o.rmempty = true;
-		o.retain = true;
-
-		o = s.taboption('dashboard', form.Value, 'main_urltest_url', _('URLTest URL'),
-			_('The URL used by the main URLTest group.'));
-		addURLTestChoices(o);
-		o.default = 'https://www.gstatic.com/generate_204';
-		o.rmempty = false;
-		o.validate = validateURLTestURL;
-		o.depends('main_node', 'urltest');
 		o.retain = true;
 
 		o = s.taboption('dashboard', form.Button, '_open_dashboard', _('sing-box dashboard'));
