@@ -76,6 +76,7 @@ start_service() {
 	procd_set_param group nogroup
 	procd_set_param env \
 		"NODE_ENV=production" \
+		"OPENWRT_RUNTIME=1" \
 		"DOCKER_ENV=true" \
 		"HOSTNAME=0.0.0.0" \
 		"PORT=$port" \

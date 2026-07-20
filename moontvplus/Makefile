@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=7
+PKG_RELEASE:=9
 
 MOONTVPLUS_BUILD_CORE?=0
 
@@ -104,6 +104,20 @@ define Build/Compile
 	$(CP) $(PKG_BUILD_DIR)/public $(CORE_ROOT)/moontvplus/
 	mkdir -p $(CORE_ROOT)/moontvplus/.next
 	$(CP) $(PKG_BUILD_DIR)/.next/static $(CORE_ROOT)/moontvplus/.next/
+	# Next standalone omits compiled webpack helpers and custom-server deps.
+	next_source="$$$$(readlink -f $(PKG_BUILD_DIR)/node_modules/next)"; \
+		next_target="$$$$(readlink -f $(CORE_ROOT)/moontvplus/node_modules/next)"; \
+		test -d "$$$$next_source/dist/compiled"; \
+		mkdir -p "$$$$next_target/dist/compiled"; \
+		cp -LR "$$$$next_source/dist/compiled/." "$$$$next_target/dist/compiled/"; \
+			mkdir -p $(CORE_ROOT)/moontvplus/node_modules; \
+			for dep_name in socket.io accepts base64id bufferutil cookie cors debug engine.io engine.io-parser mime-db mime-types ms negotiator node-gyp-build object-assign socket.io-adapter socket.io-parser vary ws; do \
+				dep_path="$$$$(find $(PKG_BUILD_DIR)/node_modules/.pnpm -path "*/node_modules/$$$$dep_name" -type d -print -quit)"; \
+				[ -d "$$$$dep_path" ] || continue; \
+				cp -LR "$$$$dep_path" "$(CORE_ROOT)/moontvplus/node_modules/$$$$dep_name"; \
+			done; \
+			dep_path="$$$$(find $(PKG_BUILD_DIR)/node_modules/.pnpm -path '*/node_modules/@socket.io/component-emitter' -type d -print -quit)"; \
+			[ -d "$$$$dep_path" ] && { mkdir -p $(CORE_ROOT)/moontvplus/node_modules/@socket.io; cp -LR "$$$$dep_path" $(CORE_ROOT)/moontvplus/node_modules/@socket.io/component-emitter; } || true
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/start.js $(CORE_ROOT)/moontvplus/start.js
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/server.js $(CORE_ROOT)/moontvplus/server.js
 	mkdir -p $(CORE_ROOT)/moontvplus/src/lib

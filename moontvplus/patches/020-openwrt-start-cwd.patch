@@ -1,0 +1,12 @@
+--- a/start.js
++++ b/start.js
+@@ -4,6 +4,10 @@
+ const http = require('http');
+ const path = require('path');
+ 
++if (process.env.OPENWRT_RUNTIME === '1') {
++  process.chdir(__dirname);
++}
++
+ // 调用 generate-manifest.js 生成 manifest.json
+ function generateManifest() {

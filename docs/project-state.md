@@ -133,6 +133,10 @@ verification; staging toolchains and ccache were retained.
   native module build are enabled only when the dedicated core Job passes
   `MOONTVPLUS_BUILD_CORE=1`. The resulting core archive includes its matching
   target Node.js binary, so firmware builds do not compile or install Node.js.
+- The dedicated `moontvplus-core` Release contains the verified
+  `2026.07.13-r9` `aarch64_cortex-a53` core and optional JASSUB CJK font. The
+  LuCI RPC uses ucode's global `trim()` for compatibility with the target rpcd,
+  and fresh installs default the administrator credentials to `admin/admin`.
 
 - Package consolidation commit: `14eee30` on `ysuolmai/openwrt-packages`.
 - GitHub `Validate packages` completed successfully for that commit.

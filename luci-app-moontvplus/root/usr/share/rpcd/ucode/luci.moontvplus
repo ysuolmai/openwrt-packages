@@ -19,7 +19,7 @@ function run(command) {
 }
 
 function coreDir() {
-	let value = run("uci -q get moontvplus.main.core_dir").output.trim();
+	let value = trim(run("uci -q get moontvplus.main.core_dir").output);
 	return value || '/mnt/moontvplus/core';
 }
 
@@ -35,7 +35,7 @@ const methods = {
 	status: {
 		call: function() {
 			let result = run('/etc/init.d/moontvplus running');
-			let port = +run("uci -q get moontvplus.main.port").output.trim() || 3000;
+			let port = +trim(run("uci -q get moontvplus.main.port").output) || 3000;
 			let dir = coreDir();
 			let marker = readfile(dir + '/current/.moontvplus-core') || '';
 			return {
@@ -45,7 +45,7 @@ const methods = {
 				core_version: markerValue(marker, 'version'),
 				core_arch: markerValue(marker, 'arch'),
 				font_installed: !!access(dir + '/shared/NotoSansCJK-Regular.ttc'),
-				update_running: !!access(UPDATE_LOCK) || (readfile(UPDATE_RESULT) || '').trim() === 'running'
+				update_running: !!access(UPDATE_LOCK) || trim(readfile(UPDATE_RESULT) || '') === 'running'
 			};
 		}
 	},
@@ -56,6 +56,11 @@ const methods = {
 			let action = request.args.action;
 			if (action !== 'start' && action !== 'stop' && action !== 'restart')
 				return { success: false, error: 'unsupported service action' };
+			if (action === 'start') {
+				let enable = run("uci -q set moontvplus.main.enabled=1 && uci -q commit moontvplus");
+				if (enable.status !== 0)
+					return { success: false, error: enable.output || 'unable to enable service' };
+			}
 			let result = run(`/etc/init.d/moontvplus ${action}`);
 			return result.status === 0
 				? { success: true }
@@ -91,7 +96,7 @@ const methods = {
 
 	core_update_status: {
 		call: function() {
-			let result = (readfile(UPDATE_RESULT) || '').trim();
+			let result = trim(readfile(UPDATE_RESULT) || '');
 			return {
 				running: !!access(UPDATE_LOCK) || result === 'running',
 				result: result,

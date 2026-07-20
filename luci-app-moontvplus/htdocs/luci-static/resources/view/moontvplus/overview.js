@@ -173,6 +173,7 @@ return view.extend({
 
 		o = s.option(form.Value, 'password', _('Administrator password'));
 		o.password = true;
+		o.default = 'admin';
 		o.rmempty = false;
 		o.description = _('The service refuses to start while this password is empty.');
 

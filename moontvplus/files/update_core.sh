@@ -149,7 +149,9 @@ install_core() {
 	old_link="$(readlink "$core_dir/current" 2>/dev/null || true)"
 	new_link="$core_dir/.current.$$"
 	ln -s "versions/$target" "$new_link"
-	mv -f "$new_link" "$core_dir/current"
+	# BusyBox mv follows a symlink to a directory instead of replacing it.
+	rm -f "$core_dir/current"
+	mv "$new_link" "$core_dir/current"
 
 	if /etc/init.d/moontvplus running >/dev/null 2>&1; then
 		/etc/init.d/moontvplus restart >/dev/null 2>&1 || true
