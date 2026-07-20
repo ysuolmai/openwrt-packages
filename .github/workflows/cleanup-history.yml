@@ -1,0 +1,86 @@
+name: Cleanup old releases and workflow runs
+
+on:
+  schedule:
+    - cron: '30 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      keep_runs:
+        description: Number of newest completed workflow runs to keep
+        required: false
+        default: '1'
+        type: string
+      keep_releases:
+        description: Number of newest releases to keep
+        required: false
+        default: '1'
+        type: string
+      dry_run:
+        description: Preview deletions without changing GitHub
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: cleanup-history
+  cancel-in-progress: true
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      KEEP_RUNS: ${{ inputs.keep_runs || '1' }}
+      KEEP_RELEASES: ${{ inputs.keep_releases || '1' }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+    steps:
+      - name: Delete old completed workflow runs and releases
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "$KEEP_RUNS" in
+            ''|*[!0-9]*) echo "keep_runs must be a non-negative integer" >&2; exit 1 ;;
+          esac
+          case "$KEEP_RELEASES" in
+            ''|*[!0-9]*) echo "keep_releases must be a non-negative integer" >&2; exit 1 ;;
+          esac
+
+          echo "Keeping $KEEP_RUNS completed workflow runs and $KEEP_RELEASES releases"
+          echo "Dry run: $DRY_RUN"
+
+          mapfile -t old_runs < <(
+            gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" \
+              --jq '.workflow_runs[] | select(.status == "completed") | [.id, .created_at] | @tsv' \
+              | sort -k2,2r \
+              | tail -n +$((KEEP_RUNS + 1)) \
+              | cut -f1
+          )
+          for run_id in "${old_runs[@]}"; do
+            [ -n "$run_id" ] || continue
+            echo "Delete workflow run $run_id"
+            if [ "$DRY_RUN" != true ]; then
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/runs/$run_id"
+            fi
+          done
+
+          mapfile -t old_releases < <(
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq '.[] | [.id, .tag_name, .created_at] | @tsv' \
+              | sort -k3,3r \
+              | tail -n +$((KEEP_RELEASES + 1))
+          )
+          for release in "${old_releases[@]}"; do
+            [ -n "$release" ] || continue
+            release_id="${release%%$'\t'*}"
+            release_name="${release#*$'\t'}"
+            release_name="${release_name%%$'\t'*}"
+            echo "Delete release $release_name ($release_id)"
+            if [ "$DRY_RUN" != true ]; then
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$release_id"
+            fi
+          done
