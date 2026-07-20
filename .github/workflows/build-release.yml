@@ -181,6 +181,30 @@ jobs:
           fi
           make defconfig
 
+      - name: Restore MoonTVPlus build dependency cache
+        if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
+        id: moontv-node-cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-${{ hashFiles('wrt/feeds/packages/lang/node/node/Makefile', 'wrt/.config') }}-v1
+          restore-keys: |
+            ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-
+          path: |
+            wrt/build_dir/hostpkg/node-*
+            wrt/build_dir/hostpkg/node-gyp-*
+            wrt/build_dir/hostpkg/node-pnpm-*
+            wrt/staging_dir/hostpkg/bin/node
+            wrt/staging_dir/hostpkg/bin/node-gyp
+            wrt/staging_dir/hostpkg/bin/pnpm
+            wrt/staging_dir/hostpkg/lib/node_modules
+            wrt/staging_dir/hostpkg/stamp/.node*
+            wrt/build_dir/target-*/node-*
+            wrt/staging_dir/target-*/usr/include/node
+            wrt/staging_dir/target-*/usr/common.gypi
+            wrt/staging_dir/target-*/root-*/usr/bin/node
+            wrt/staging_dir/target-*/pkginfo/node*
+            wrt/staging_dir/target-*/stamp/.node*
+
       - name: Build target toolchain
         if: steps.toolchain-cache.outputs.cache-hit != 'true'
         run: |
@@ -214,13 +238,37 @@ jobs:
           make package/feeds/packages/node/host/compile -j1 V=s
           make package/feeds/packages/node-gyp/host/compile -j1 V=s
           make package/feeds/packages/node-pnpm/host/compile -j1 V=s
-          make package/feeds/packages/node/compile -j1 V=s
+          # Target Node is a standalone C++ build; keep MoonTVPlus itself at
+          # -j1 while allowing this independent step two workers.
+          make package/feeds/packages/node/compile -j2 V=s
           test -x staging_dir/hostpkg/bin/node
           test -x staging_dir/hostpkg/bin/node-gyp
           test -x staging_dir/hostpkg/bin/pnpm
           test -s staging_dir/target-*/usr/common.gypi
           test -s staging_dir/target-*/usr/include/node/node_version.h
           test -x staging_dir/target-*/root-*/usr/bin/node
+
+      - name: Save MoonTVPlus build dependency cache
+        if: matrix.package == 'moontvplus' && matrix.format == 'ipk' && success()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-${{ hashFiles('wrt/feeds/packages/lang/node/node/Makefile', 'wrt/.config') }}-v1
+          path: |
+            wrt/build_dir/hostpkg/node-*
+            wrt/build_dir/hostpkg/node-gyp-*
+            wrt/build_dir/hostpkg/node-pnpm-*
+            wrt/staging_dir/hostpkg/bin/node
+            wrt/staging_dir/hostpkg/bin/node-gyp
+            wrt/staging_dir/hostpkg/bin/pnpm
+            wrt/staging_dir/hostpkg/lib/node_modules
+            wrt/staging_dir/hostpkg/stamp/.node*
+            wrt/build_dir/target-*/node-*
+            wrt/staging_dir/target-*/usr/include/node
+            wrt/staging_dir/target-*/usr/common.gypi
+            wrt/staging_dir/target-*/root-*/usr/bin/node
+            wrt/staging_dir/target-*/pkginfo/node*
+            wrt/staging_dir/target-*/stamp/.node*
 
       - name: Build IPK package
         if: matrix.format == 'ipk'

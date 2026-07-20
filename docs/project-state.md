@@ -146,6 +146,10 @@ verification; staging toolchains and ccache were retained.
   compile the target `node` package explicitly before `better-sqlite3`; Actions
   run `29734454128` showed that host Node tools alone do not stage the required
   target `common.gypi`, Node headers, or runtime binary on a clean runner.
+- MoonTVPlus Jobs cache their host/target Node build dependencies separately,
+  and use two workers only for the standalone target Node C++ build. The
+  MoonTVPlus pnpm/Next.js package build remains single-worker to avoid memory
+  spikes and duplicate package-manager processes.
 - The `moontvplus` recipe is lightweight by default: firmware builds package
   only the service, updater, and configuration files. The source checkout,
   target Node.js runtime, Node.js host tools, pnpm install, Next.js build, and
