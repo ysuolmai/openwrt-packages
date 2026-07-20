@@ -81,14 +81,14 @@ const methods = {
 	core_update_start: {
 		args: { component: 'core', force: false },
 		call: function(request) {
-			let component = request.args?.component;
+			let component = request.args.component;
 			if (component !== 'core' && component !== 'font')
 				return { success: false, error: 'unsupported core component' };
-			if (access(UPDATE_LOCK) || (readfile(UPDATE_RESULT) || '').trim() === 'running')
+			if (access(UPDATE_LOCK) || trim(readfile(UPDATE_RESULT) || '') === 'running')
 				return { success: false, running: true, error: 'an update is already running' };
 			system(`mkdir -p ${RUN_DIR}`);
 			writefile(UPDATE_RESULT, 'running\n');
-			let force = request.args?.force ? ' force' : '';
+			let force = request.args.force ? ' force' : '';
 			system(`/usr/share/moontvplus/update_core.sh ${component}${force} >${UPDATE_LOG} 2>&1 &`);
 			return { success: true };
 		}
