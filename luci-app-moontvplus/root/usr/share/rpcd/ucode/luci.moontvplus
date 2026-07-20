@@ -82,7 +82,7 @@ const methods = {
 		args: { component: 'core', force: false },
 		call: function(request) {
 			let component = request.args.component;
-			if (component !== 'core' && component !== 'font')
+			if (component !== 'core' && component !== 'font' && component !== 'all')
 				return { success: false, error: 'unsupported core component' };
 			if (access(UPDATE_LOCK) || trim(readfile(UPDATE_RESULT) || '') === 'running')
 				return { success: false, running: true, error: 'an update is already running' };

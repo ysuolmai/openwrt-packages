@@ -45,7 +45,7 @@ ImmortalWrt packages feed recipe.
 
 The local delta is intentionally narrow:
 
-- Routing field for the main URLTest URL, next to the URLTest node selection.
+- Dashboard field for the main URLTest URL, next to the URLTest node selection.
 - MIUI, HiCloud, Cloudflare, and Google `generate_204` presets.
 - Custom HTTP/HTTPS URL validation.
 - UCI default `https://www.gstatic.com/generate_204`.
@@ -53,6 +53,15 @@ The local delta is intentionally narrow:
 - Simplified Chinese translations.
 
 See `docs/homeproxy-upstreams.md` for the update policy.
+
+On 2026-07-20, HomeProxy was synchronized to VIKINGYFY path commit
+`2fc30e9ad5016a8c822656978e1d3ce1d42c91bf` together with sing-box
+`1.14.0-alpha.48` at path commit
+`a610a1d5913ec55b2b1d19f0c06716055814f313`. The update retains the local
+main URLTest URL controls while adopting upstream URLTest cleanup and empty
+group validation. The canonical shadcn theme commit was advanced to
+`bd38f3616286a290346a3643ced80be8b13c2131`; that upstream delta only changes
+development tooling, so no runtime theme files were imported.
 
 ## CI integration
 
@@ -84,6 +93,11 @@ recipe each consume one level of dollar escaping. GitHub Actions run
 `29645660124` exposed the previous `$$1` form as `file ""`, leaving host ELF
 files in the package and causing false glibc dependency errors.
 `luci-app-moontvplus` owns its UCI, service control and log interface.
+The LuCI core installer exposes one operation that installs or updates the
+application core and optional subtitle font sequentially. The updater uses a
+predictable `022` umask and repairs traversal permissions on the configured
+core parent so the unprivileged `nobody` service can execute a freshly
+downloaded runtime.
 
 ## Build verification
 

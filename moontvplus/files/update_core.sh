@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 set -u
+umask 022
 
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 RUN_DIR=/var/run/moontvplus
@@ -144,6 +145,7 @@ install_core() {
 
 	target="$marker_version-$(printf '%s' "$checksum" | cut -c1-12)"
 	mkdir -p "$core_dir/versions"
+	chmod 0755 "$core_dir" "$core_dir/versions"
 	[ ! -e "$core_dir/versions/$target" ] || target="$target-$$"
 	mv "$candidate" "$core_dir/versions/$target"
 	old_link="$(readlink "$core_dir/current" 2>/dev/null || true)"
@@ -187,9 +189,11 @@ install_font() {
 	checksum="$(verify_checksum "$payload" "$checksum_file")"
 	[ -s "$payload" ] || fail "The downloaded font is empty."
 	mkdir -p "$core_dir/shared"
+	chmod 0755 "$core_dir" "$core_dir/shared"
 	mv "$payload" "$core_dir/shared/NotoSansCJK-Regular.ttc.new"
 	mv -f "$core_dir/shared/NotoSansCJK-Regular.ttc.new" \
 		"$core_dir/shared/NotoSansCJK-Regular.ttc"
+	chmod 0644 "$core_dir/shared/NotoSansCJK-Regular.ttc"
 	printf 'url=%s\nsha256=%s\n' "$url" "$checksum" >"$current"
 	[ ! -d "$core_dir/current" ] || link_optional_font "$core_dir/current"
 	echo "Installed the optional JASSUB CJK font."
@@ -197,7 +201,7 @@ install_font() {
 
 component="${1:-core}"
 force="${2:-}"
-case "$component" in core|font) ;; *) fail "Usage: $0 {core|font} [force]";; esac
+case "$component" in core|font|all) ;; *) fail "Usage: $0 {core|font|all} [force]";; esac
 core_dir="$(cfg core_dir)"; [ -n "$core_dir" ] || core_dir=/mnt/moontvplus/core
 release_repo="$(cfg release_repo)"; [ -n "$release_repo" ] || release_repo=ysuolmai/openwrt-packages
 release_tag="$(cfg release_tag)"; [ -n "$release_tag" ] || release_tag=moontvplus-core
@@ -214,7 +218,13 @@ case "$release_tag" in
 	''|*[!A-Za-z0-9._-]*) fail "Release tag is invalid.";;
 esac
 
+core_parent="${core_dir%/*}"; [ -n "$core_parent" ] || core_parent=/
 mkdir -p "$RUN_DIR" "$core_dir"
+chmod 0755 "$core_parent" "$core_dir"
+[ ! -d "$core_dir/versions" ] || chmod 0755 "$core_dir/versions"
+[ ! -d "$core_dir/shared" ] || chmod 0755 "$core_dir/shared"
+[ ! -f "$core_dir/shared/NotoSansCJK-Regular.ttc" ] || \
+	chmod 0644 "$core_dir/shared/NotoSansCJK-Regular.ttc"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
 	fail "Another core update is already running."
 fi
@@ -236,9 +246,12 @@ download_asset "$api" "$metadata"
 arch="$(sed -n '1p' /usr/share/moontvplus/core-arch)"
 [ -n "$arch" ] || fail "The package does not declare its target architecture."
 
-if [ "$component" = core ]; then
-	install_core "$metadata" "$arch" "$force"
-else
-	install_font "$metadata" "$force"
-fi
+case "$component" in
+	core) install_core "$metadata" "$arch" "$force";;
+	font) install_font "$metadata" "$force";;
+	all)
+		install_core "$metadata" "$arch" "$force"
+		install_font "$metadata" "$force"
+		;;
+esac
 logger -t "$LOG_TAG" "$component update completed"

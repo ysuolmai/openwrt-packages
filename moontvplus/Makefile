@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=moontvplus
 PKG_VERSION:=2026.07.13
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 
 MOONTVPLUS_BUILD_CORE?=0
 
@@ -172,6 +172,7 @@ define Package/moontvplus/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	mkdir -p /etc/moontvplus /mnt/moontvplus/core /mnt/moontvplus/downloads
+	chmod 0755 /mnt/moontvplus /mnt/moontvplus/core /mnt/moontvplus/downloads
 	chown nobody:nogroup /etc/moontvplus /mnt/moontvplus/downloads 2>/dev/null || true
 	/etc/init.d/moontvplus enable >/dev/null 2>&1 || true
 }

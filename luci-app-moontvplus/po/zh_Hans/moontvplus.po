@@ -19,6 +19,15 @@ msgstr "未安装"
 msgid "Optional subtitle font"
 msgstr "可选字幕字体"
 
+msgid "Download core and font"
+msgstr "下载核心和字体"
+
+msgid "Update core and font"
+msgstr "更新核心和字体"
+
+msgid "Downloading core and font..."
+msgstr "正在下载核心和字体..."
+
 msgid "Download core"
 msgstr "下载核心"
 

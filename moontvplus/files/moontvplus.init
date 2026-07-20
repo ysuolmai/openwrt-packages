@@ -11,7 +11,7 @@ append_env() {
 }
 
 start_service() {
-	local enabled port username password site_name storage_type core_dir app_dir node_bin
+	local enabled port username password site_name storage_type core_dir core_parent app_dir node_bin
 	local data_dir download_dir enable_tv_mode enable_offline_download
 	local watch_room_enabled watch_room_server_type watch_room_external_url
 	local watch_room_external_auth redis_url kvrocks_url
@@ -50,6 +50,13 @@ start_service() {
 		/*) ;;
 		*) logger -t moontvplus 'core directory must be an absolute path'; return 1;;
 	esac
+	core_parent="${core_dir%/*}"
+	[ -n "$core_parent" ] || core_parent=/
+	chmod 0755 "$core_parent" "$core_dir" 2>/dev/null || true
+	[ ! -d "$core_dir/versions" ] || chmod 0755 "$core_dir/versions"
+	[ ! -d "$core_dir/shared" ] || chmod 0755 "$core_dir/shared"
+	[ ! -f "$core_dir/shared/NotoSansCJK-Regular.ttc" ] || \
+		chmod 0644 "$core_dir/shared/NotoSansCJK-Regular.ttc"
 	app_dir="$core_dir/current"
 	[ -f "$app_dir/.moontvplus-core" ] && [ -f "$app_dir/start.js" ] || {
 		logger -t moontvplus 'core is not installed; download it from LuCI first'

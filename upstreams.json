@@ -165,7 +165,7 @@
           "repository": "https://github.com/eamonxg/luci-theme-shadcn",
           "branch": "main",
           "path": "",
-          "commit": "9a7eb900c5db313c4fbd486530cee5cf01d6d50a"
+          "commit": "bd38f3616286a290346a3643ced80be8b13c2131"
         }
       ],
       "sync_strategy": "manual-fork",
@@ -182,7 +182,7 @@
           "repository": "https://github.com/VIKINGYFY/packages",
           "branch": "main",
           "path": "sing-box",
-          "commit": "bc14829398ade3028265d500a0eab6534658fd2a"
+          "commit": "a610a1d5913ec55b2b1d19f0c06716055814f313"
         }
       ],
       "sync_strategy": "mirror-with-homeproxy",
@@ -211,7 +211,7 @@
           "repository": "https://github.com/VIKINGYFY/packages",
           "branch": "main",
           "path": "luci-app-homeproxy",
-          "commit": "2102952977db26ed5471f1ac0c111012f5caab99"
+          "commit": "2fc30e9ad5016a8c822656978e1d3ce1d42c91bf"
         }
       ],
       "sync_strategy": "viking-base-with-local-patches",
