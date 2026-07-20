@@ -121,6 +121,7 @@ jobs:
           echo "OPENWRT_HASH=$(git -C wrt rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Restore OpenWrt toolchain cache
+        id: toolchain-cache
         uses: actions/cache@v4
         with:
           key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-toolchain-v1
@@ -181,6 +182,7 @@ jobs:
           make defconfig
 
       - name: Build target toolchain
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
         run: |
           cd wrt
           make toolchain/install -j"$(nproc)" || make toolchain/install -j1 V=s
