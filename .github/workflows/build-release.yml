@@ -209,9 +209,9 @@ jobs:
           cd wrt
           # Direct package targets do not reliably expand host build
           # dependencies, so stage Node, node-gyp and pnpm explicitly.
-          make package/feeds/packages/node/host-compile -j1 V=s
-          make package/feeds/packages/node-gyp/host-compile -j1 V=s
-          make package/feeds/packages/node-pnpm/host-compile -j1 V=s
+          make package/feeds/packages/node/host/compile -j1 V=s
+          make package/feeds/packages/node-gyp/host/compile -j1 V=s
+          make package/feeds/packages/node-pnpm/host/compile -j1 V=s
           test -x staging_dir/hostpkg/bin/node
           test -x staging_dir/hostpkg/bin/node-gyp
           test -x staging_dir/hostpkg/bin/pnpm
