@@ -172,6 +172,11 @@ jobs:
           CONFIG_PACKAGE_luci-app-moontvplus=y
           CONFIG_USE_APK=n
           EOF
+          if [ "$BUILD_MOONTV_CORE" = 1 ]; then
+            # The core archive bundles the target Node runtime, so stage the
+            # target package for extraction without making it a firmware dep.
+            echo 'CONFIG_PACKAGE_node=y' >> .config
+          fi
           make defconfig
 
       - name: Build target toolchain
@@ -208,7 +213,7 @@ jobs:
                 echo "Building $package core with top-level -j1"
                 build_status=0
                 make "package/ysuolmai/$package/compile" \
-                  MOONTVPLUS_BUILD_CORE=1 -j1 || build_status=$?
+                  MOONTVPLUS_BUILD_CORE=1 -j1 V=s || build_status=$?
                 ;;
               luci-app-moontvplus)
                 echo "Building lightweight $package with top-level -j1"
