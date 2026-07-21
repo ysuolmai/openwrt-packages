@@ -50,8 +50,8 @@ for compatibility and never pass the control field into the generated FRP
 configuration. The FRPC UI keeps server connection/authentication fields in
 Common Settings, moves operational tuning to Advanced Settings, and omits the
 optional local admin API credentials from the normal form. Versions
-`frpc/frps 0.66.0-r3`, `luci-app-frpc 2026.07.21-r5`, and
-`luci-app-frps 2026.07.21-r4` were installed and checked on both
+`frpc/frps 0.66.0-r3`, `luci-app-frpc 2026.07.21-r6`, and
+`luci-app-frps 2026.07.21-r5` were installed and checked on both
 `192.168.8.1` and `172.28.1.225`.
 
 The local delta is intentionally narrow:

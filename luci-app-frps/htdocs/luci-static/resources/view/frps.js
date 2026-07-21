@@ -158,7 +158,9 @@ return view.extend({
 		o.default = '0';
 		o.rmempty = false;
 		o.cfgvalue = function (section_id) {
-			return this.super('cfgvalue', [section_id]) ?? uci.get('frps', '@init[0]', 'enabled') ?? '0';
+			const value = this.super('cfgvalue', arguments);
+			const init = uci.sections('frps', 'init')[0];
+			return value ?? init?.enabled ?? '0';
 		};
 
 		defTabOpts(s, 'common', commonConf, {optional: true});
