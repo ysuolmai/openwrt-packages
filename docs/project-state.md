@@ -71,7 +71,8 @@ development tooling, so no runtime theme files were imported.
   `diy-mini.sh` has no repository references and was intentionally left alone.
 - `ysuolmai/amlogic-s9xxx-openwrt` has three source variants under
   `config/openwrt_main`, `config/immortalwrt_master`, and `config/lede_master`;
-  all three must use the collection.
+  all three use the collection and select the lightweight `moontvplus` service
+  together with `luci-app-moontvplus`.
 - `ysuolmai/CloseWRT-CI` runs `Scripts/Packages.sh`, then `Scripts/Handles.sh`,
   then `Scripts/diy.sh`. The collection is installed in `diy.sh`. The old
   HomeProxy resource preloader is incompatible with the VIKINGYFY layout and
@@ -156,8 +157,9 @@ verification; staging toolchains and ccache were retained.
   native module build are enabled only when the dedicated core Job passes
   `MOONTVPLUS_BUILD_CORE=1`. The resulting core archive includes its matching
   target Node.js binary, so firmware builds do not compile or install Node.js.
-- The dedicated `moontvplus-core` Release contains the verified
-  `2026.07.13-r9` `aarch64_cortex-a53` core and optional JASSUB CJK font. The
+- The dedicated `moontvplus-core` Release contains verified `2026.07.13-r10`
+  cores for `aarch64_cortex-a53` and Amlogic's `aarch64_generic`, plus the
+  optional JASSUB CJK font. The
   LuCI RPC uses ucode's global `trim()` for compatibility with the target rpcd,
   and fresh installs default the administrator credentials to `admin/admin`.
 
@@ -165,7 +167,8 @@ verification; staging toolchains and ccache were retained.
 - GitHub `Validate packages` completed successfully for that commit.
 - `ysuolmai/openwrt-ci2`: source migration commit `fe5633a`.
 - `ysuolmai/amlogic-s9xxx-openwrt`: source migration commit `6d0ad9c`, rebased
-  after remote commit `bfd5c09` removed the superseded DDNS patch files.
+  after remote commit `bfd5c09` removed the superseded DDNS patch files;
+  MoonTVPlus was enabled for all three source variants in commit `66b325e`.
 - `ysuolmai/CloseWRT-CI`: source migration commit `d3c41e4`.
 
 HomeProxy requires the matching maintained `sing-box` recipe. Consumer import
