@@ -91,9 +91,6 @@ jobs:
           esac
           echo "BUILD_PATHS=$build_paths" >> "$GITHUB_ENV"
           echo "EXPECTED_PACKAGES=$expected_packages" >> "$GITHUB_ENV"
-          # The target core is built on the dedicated remote builder and
-          # published separately. GitHub validates the lightweight IPK only.
-          echo "BUILD_MOONTV_CORE=0" >> "$GITHUB_ENV"
 
       - name: Prepare build environment
         env:
@@ -172,36 +169,7 @@ jobs:
           CONFIG_PACKAGE_luci-app-moontvplus=y
           CONFIG_USE_APK=n
           EOF
-          if [ "$BUILD_MOONTV_CORE" = 1 ]; then
-            # The core archive bundles the target Node runtime, so stage the
-            # target package for extraction without making it a firmware dep.
-            echo 'CONFIG_PACKAGE_node=y' >> .config
-          fi
           make defconfig
-
-      - name: Restore MoonTVPlus build dependency cache
-        if: env.BUILD_MOONTV_CORE == '1'
-        id: moontv-node-cache
-        uses: actions/cache@v4
-        with:
-          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-${{ hashFiles('wrt/feeds/packages/lang/node/node/Makefile', 'wrt/.config') }}-v1
-          restore-keys: |
-            ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-
-          path: |
-            wrt/build_dir/hostpkg/node-*
-            wrt/build_dir/hostpkg/node-gyp-*
-            wrt/build_dir/hostpkg/node-pnpm-*
-            wrt/staging_dir/hostpkg/bin/node
-            wrt/staging_dir/hostpkg/bin/node-gyp
-            wrt/staging_dir/hostpkg/bin/pnpm
-            wrt/staging_dir/hostpkg/lib/node_modules
-            wrt/staging_dir/hostpkg/stamp/.node*
-            wrt/build_dir/target-*/node-*
-            wrt/staging_dir/target-*/usr/include/node
-            wrt/staging_dir/target-*/usr/common.gypi
-            wrt/staging_dir/target-*/root-*/usr/bin/node
-            wrt/staging_dir/target-*/pkginfo/node*
-            wrt/staging_dir/target-*/stamp/.node*
 
       - name: Build target toolchain
         if: steps.toolchain-cache.outputs.cache-hit != 'true'
@@ -226,50 +194,6 @@ jobs:
             wrt/build_dir/toolchain-*
             wrt/staging_dir/host*
             wrt/staging_dir/toolchain-*
-
-      - name: Build MoonTVPlus build dependencies
-        if: env.BUILD_MOONTV_CORE == '1'
-        run: |
-          cd wrt
-          # Direct package targets do not reliably expand build dependencies,
-          # so stage both the host tools and target Node headers explicitly.
-          make package/feeds/packages/node/host/compile -j1
-          make package/feeds/packages/node-gyp/host/compile -j1
-          make package/feeds/packages/node-pnpm/host/compile -j1
-          # Target Node is a standalone C++ build; keep MoonTVPlus itself at
-          # -j1 while allowing this independent step two workers. Retry once
-          # against the generated stamps because OpenWrt can return a spurious
-          # parallel failure after Node has already been packaged and staged.
-          make package/feeds/packages/node/compile -j2 || \
-            make package/feeds/packages/node/compile -j1 V=s
-          test -x staging_dir/hostpkg/bin/node
-          test -x staging_dir/hostpkg/bin/node-gyp
-          test -x staging_dir/hostpkg/bin/pnpm
-          test -s staging_dir/target-*/usr/common.gypi
-          test -s staging_dir/target-*/usr/include/node/node_version.h
-          test -x staging_dir/target-*/root-*/usr/bin/node
-
-      - name: Save MoonTVPlus build dependency cache
-        if: env.BUILD_MOONTV_CORE == '1' && success()
-        continue-on-error: true
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ env.OPENWRT_CONFIG }}-${{ env.OPENWRT_BRANCH }}-moontv-node-${{ hashFiles('wrt/feeds/packages/lang/node/node/Makefile', 'wrt/.config') }}-v1
-          path: |
-            wrt/build_dir/hostpkg/node-*
-            wrt/build_dir/hostpkg/node-gyp-*
-            wrt/build_dir/hostpkg/node-pnpm-*
-            wrt/staging_dir/hostpkg/bin/node
-            wrt/staging_dir/hostpkg/bin/node-gyp
-            wrt/staging_dir/hostpkg/bin/pnpm
-            wrt/staging_dir/hostpkg/lib/node_modules
-            wrt/staging_dir/hostpkg/stamp/.node*
-            wrt/build_dir/target-*/node-*
-            wrt/staging_dir/target-*/usr/include/node
-            wrt/staging_dir/target-*/usr/common.gypi
-            wrt/staging_dir/target-*/root-*/usr/bin/node
-            wrt/staging_dir/target-*/pkginfo/node*
-            wrt/staging_dir/target-*/stamp/.node*
 
       - name: Build IPK package
         if: matrix.format == 'ipk'
@@ -343,27 +267,6 @@ jobs:
           find bin/packages -type f -name '*.apk' \
             -exec cp -f {} "$GITHUB_WORKSPACE/release/" \;
 
-      - name: Collect MoonTVPlus runtime assets
-        if: env.BUILD_MOONTV_CORE == '1'
-        run: |
-          mkdir -p core-release
-          find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-core_*.tar.gz' \
-            -exec cp -f {} core-release/ \;
-          find wrt/build_dir -type f -path '*/.openwrt-artifacts/moontvplus-jassub-font_*.ttc' \
-            -exec cp -f {} core-release/ \;
-          test -n "$(find core-release -maxdepth 1 -type f -name 'moontvplus-core_*.tar.gz' -print -quit)" || {
-            echo "Missing MoonTVPlus core archive" >&2
-            exit 1
-          }
-          test -n "$(find core-release -maxdepth 1 -type f -name 'moontvplus-jassub-font_*.ttc' -print -quit)" || {
-            echo "Missing MoonTVPlus optional font" >&2
-            exit 1
-          }
-          cd core-release
-          for asset in moontvplus-core_*.tar.gz moontvplus-jassub-font_*.ttc; do
-            sha256sum "$asset" >"$asset.sha256"
-          done
-
       - name: Verify package output
         run: |
           for package in $EXPECTED_PACKAGES; do
@@ -386,14 +289,6 @@ jobs:
         with:
           name: packages-${{ matrix.package }}-${{ matrix.format }}-${{ github.run_number }}
           path: release/*
-          if-no-files-found: error
-
-      - name: Upload MoonTVPlus core artifacts
-        if: env.BUILD_MOONTV_CORE == '1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: moontvplus-core-${{ github.run_id }}
-          path: core-release/*
           if-no-files-found: error
 
   release:
