@@ -235,12 +235,15 @@ jobs:
           cd wrt
           # Direct package targets do not reliably expand build dependencies,
           # so stage both the host tools and target Node headers explicitly.
-          make package/feeds/packages/node/host/compile -j1 V=s
-          make package/feeds/packages/node-gyp/host/compile -j1 V=s
-          make package/feeds/packages/node-pnpm/host/compile -j1 V=s
+          make package/feeds/packages/node/host/compile -j1
+          make package/feeds/packages/node-gyp/host/compile -j1
+          make package/feeds/packages/node-pnpm/host/compile -j1
           # Target Node is a standalone C++ build; keep MoonTVPlus itself at
-          # -j1 while allowing this independent step two workers.
-          make package/feeds/packages/node/compile -j2 V=s
+          # -j1 while allowing this independent step two workers. Retry once
+          # against the generated stamps because OpenWrt can return a spurious
+          # parallel failure after Node has already been packaged and staged.
+          make package/feeds/packages/node/compile -j2 || \
+            make package/feeds/packages/node/compile -j1 V=s
           test -x staging_dir/hostpkg/bin/node
           test -x staging_dir/hostpkg/bin/node-gyp
           test -x staging_dir/hostpkg/bin/pnpm

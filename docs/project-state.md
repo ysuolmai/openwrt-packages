@@ -148,9 +148,12 @@ verification; staging toolchains and ccache were retained.
   run `29734454128` showed that host Node tools alone do not stage the required
   target `common.gypi`, Node headers, or runtime binary on a clean runner.
 - MoonTVPlus Jobs cache their host/target Node build dependencies separately,
-  and use two workers only for the standalone target Node C++ build. The
-  MoonTVPlus pnpm/Next.js package build remains single-worker to avoid memory
-  spikes and duplicate package-manager processes.
+  and use two workers only for the standalone target Node C++ build. Node uses
+  concise output and retries once as a single-worker stamp verification if the
+  parallel OpenWrt make returns nonzero after packaging and staging succeeded;
+  this avoids multi-million-line Actions logs and preserves the verified cache.
+  The MoonTVPlus pnpm/Next.js package build remains single-worker to avoid
+  memory spikes and duplicate package-manager processes.
 - The `moontvplus` recipe is lightweight by default: firmware builds package
   only the service, updater, and configuration files. The source checkout,
   target Node.js runtime, Node.js host tools, pnpm install, Next.js build, and
