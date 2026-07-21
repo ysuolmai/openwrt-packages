@@ -389,7 +389,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload MoonTVPlus core artifacts
-        if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
+        if: env.BUILD_MOONTV_CORE == '1'
         uses: actions/upload-artifact@v4
         with:
           name: moontvplus-core-${{ github.run_id }}
