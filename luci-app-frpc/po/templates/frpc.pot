@@ -81,6 +81,9 @@ msgstr ""
 msgid "Common Settings"
 msgstr ""
 
+msgid "Advanced Settings"
+msgstr ""
+
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:47
 msgid "Compression"
 msgstr ""

@@ -21,6 +21,7 @@ config_cb() {
 		option_cb() {
 			local option="$1"
 			local value="$2"
+			[ "$CONFIG_SECTION" = "common" ] && [ "$option" = "enabled" ] && return 0
 			echo "$option = $value" >> "$conf_file"
 		}
 		list_cb() {
@@ -48,7 +49,7 @@ start_service() {
 	> "$conf_file"
 	config_load "$NAME"
 
-	local enabled stdout stderr user group respawn env conf_inc
+	local enabled common_enabled stdout stderr user group respawn env conf_inc
 	uci_validate_section "$NAME" init "$init_cfg" \
 		'enabled:bool:0' \
 		'stdout:bool:1' \
@@ -64,6 +65,8 @@ start_service() {
 		_err "uci_validate_section returned $err"
 		return 1
 	}
+	config_get common_enabled common enabled
+	[ -n "$common_enabled" ] && enabled="$common_enabled"
 	[ "$enabled" -eq 1 ] || return 0
 
 	[ -n "$conf_inc" ] && config_list_foreach "$init_cfg" conf_inc cat >> "$conf_file"

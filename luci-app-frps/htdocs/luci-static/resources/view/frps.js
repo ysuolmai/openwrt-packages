@@ -2,13 +2,10 @@
 'require view';
 'require form';
 'require rpc';
+'require uci';
 'require tools.widgets as widgets';
 
 //	[Widget, Option, Title, Description, {Param: 'Value'}],
-const enabledConf = [
-	[form.Flag, 'enabled', _('Enabled'), undefined, {default: '0', rmempty: false}],
-];
-
 const startupConf = [
 	[form.Flag, 'stdout', _('Log stdout')],
 	[form.Flag, 'stderr', _('Log stderr')],
@@ -157,11 +154,12 @@ return view.extend({
 		s.tab('common', _('Common settings'));
 		s.tab('init', _('Startup settings'));
 
-		o = s.taboption('common', form.SectionValue, '_enabled', form.TypedSection, 'init');
-		ss = o.subsection;
-		ss.anonymous = true;
-		ss.dynamic = true;
-		defOpts(ss, enabledConf);
+		o = s.taboption('common', form.Flag, 'enabled', _('Enabled'));
+		o.default = '0';
+		o.rmempty = false;
+		o.cfgvalue = function (section_id) {
+			return this.super('cfgvalue', [section_id]) ?? uci.get('frps', '@init[0]', 'enabled') ?? '0';
+		};
 
 		defTabOpts(s, 'common', commonConf, {optional: true});
 

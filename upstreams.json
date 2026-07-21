@@ -26,7 +26,8 @@
       "local_changes": [
         "Install the init scripts and UCI defaults from the binary packages",
         "Run as root to match the target firmware",
-        "Support an enabled UCI option and default both services to disabled"
+        "Store the service enable switch in the common UCI section while accepting the legacy init section",
+        "Default both services to disabled"
       ]
     },
     {
@@ -43,7 +44,8 @@
       ],
       "sync_strategy": "manual-fork",
       "local_changes": [
-        "Add a persistent service enable switch",
+        "Expose the service enable switch directly in Common Settings",
+        "Keep rarely used frpc admin API fields out of the normal UI",
         "Detect running state without assuming a fixed procd instance name"
       ]
     },
@@ -61,7 +63,7 @@
       ],
       "sync_strategy": "manual-fork",
       "local_changes": [
-        "Add a persistent service enable switch",
+        "Expose the service enable switch directly in Common Settings",
         "Detect running state without assuming a fixed procd instance name"
       ]
     },

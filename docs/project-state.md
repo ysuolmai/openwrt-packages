@@ -43,6 +43,17 @@ The VIKINGYFY sing-box recipe is mirrored in this collection as a required
 companion package. CI consumers must not pair this HomeProxy with the older
 ImmortalWrt packages feed recipe.
 
+FRP service switches were corrected on 2026-07-21. The `enabled` value now
+lives in `frpc.common` and `frps.common`, so the LuCI checkboxes render directly
+under Common Settings; the init scripts still read old `init.enabled` values
+for compatibility and never pass the control field into the generated FRP
+configuration. The FRPC UI keeps server connection/authentication fields in
+Common Settings, moves operational tuning to Advanced Settings, and omits the
+optional local admin API credentials from the normal form. Versions
+`frpc/frps 0.66.0-r3`, `luci-app-frpc 2026.07.21-r5`, and
+`luci-app-frps 2026.07.21-r4` were installed and checked on both
+`192.168.8.1` and `172.28.1.225`.
+
 The local delta is intentionally narrow:
 
 - Dashboard field for the main URLTest URL, next to the URLTest node selection.

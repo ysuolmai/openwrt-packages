@@ -94,6 +94,9 @@ msgstr "收集資料中..."
 msgid "Common Settings"
 msgstr "通用設定"
 
+msgid "Advanced Settings"
+msgstr "進階設定"
+
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:47
 msgid "Compression"
 msgstr "壓縮"
