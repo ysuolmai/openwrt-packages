@@ -91,11 +91,9 @@ jobs:
           esac
           echo "BUILD_PATHS=$build_paths" >> "$GITHUB_ENV"
           echo "EXPECTED_PACKAGES=$expected_packages" >> "$GITHUB_ENV"
-          if [ "$SELECTED_PACKAGE" = moontvplus ] && [ "$BUILD_FORMAT" = ipk ]; then
-            echo "BUILD_MOONTV_CORE=1" >> "$GITHUB_ENV"
-          else
-            echo "BUILD_MOONTV_CORE=0" >> "$GITHUB_ENV"
-          fi
+          # The target core is built on the dedicated remote builder and
+          # published separately. GitHub validates the lightweight IPK only.
+          echo "BUILD_MOONTV_CORE=0" >> "$GITHUB_ENV"
 
       - name: Prepare build environment
         env:
@@ -182,7 +180,7 @@ jobs:
           make defconfig
 
       - name: Restore MoonTVPlus build dependency cache
-        if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
+        if: env.BUILD_MOONTV_CORE == '1'
         id: moontv-node-cache
         uses: actions/cache@v4
         with:
@@ -230,7 +228,7 @@ jobs:
             wrt/staging_dir/toolchain-*
 
       - name: Build MoonTVPlus build dependencies
-        if: matrix.package == 'moontvplus' && matrix.format == 'ipk'
+        if: env.BUILD_MOONTV_CORE == '1'
         run: |
           cd wrt
           # Direct package targets do not reliably expand build dependencies,
@@ -252,7 +250,7 @@ jobs:
           test -x staging_dir/target-*/root-*/usr/bin/node
 
       - name: Save MoonTVPlus build dependency cache
-        if: matrix.package == 'moontvplus' && matrix.format == 'ipk' && success()
+        if: env.BUILD_MOONTV_CORE == '1' && success()
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
@@ -283,10 +281,10 @@ jobs:
           for package in $BUILD_PATHS; do
             case "$package" in
               moontvplus)
-                echo "Building $package core with top-level -j1"
+                echo "Building lightweight $package with top-level -j1"
                 build_status=0
                 make "package/ysuolmai/$package/compile" \
-                  MOONTVPLUS_BUILD_CORE=1 -j1 V=s || build_status=$?
+                  MOONTVPLUS_BUILD_CORE=0 -j1 || build_status=$?
                 ;;
               luci-app-moontvplus)
                 echo "Building lightweight $package with top-level -j1"

@@ -135,29 +135,21 @@ verification; staging toolchains and ccache were retained.
   modules. A failed build or missing primary IPK/APK output fails the run.
 - Manual runs select one source package or all packages and choose IPK, APK, or
   both output formats. Every successful matrix Job uploads an Actions artifact;
-  an all-package run aggregates package files into one Release. A successful
-  build containing MoonTVPlus automatically updates the separate
-  `moontvplus-core` Release with its core, optional font, and checksums.
+  an all-package run aggregates package files into one Release. MoonTVPlus core
+  and font assets are built by the dedicated remote builder and published to
+  the separate `moontvplus-core` Release.
 - MoonTVPlus and its LuCI app use top-level `-j1` package builds without
   verbose `V=s` output. Their shared Node.js dependency can otherwise overwhelm
   the Actions log pipe during its highly parallel install phase; other packages
   retain the normal runner-wide parallel build.
 - The workflow restores a stable OpenWrt host/toolchain cache and skips
-  `make toolchain/install` on an exact cache hit. MoonTVPlus core Jobs also
-  compile the target `node` package explicitly before `better-sqlite3`; Actions
-  run `29734454128` showed that host Node tools alone do not stage the required
-  target `common.gypi`, Node headers, or runtime binary on a clean runner.
-- MoonTVPlus Jobs cache their host/target Node build dependencies separately,
-  and use two workers only for the standalone target Node C++ build. Node uses
-  concise output and retries once as a single-worker stamp verification if the
-  parallel OpenWrt make returns nonzero after packaging and staging succeeded;
-  this avoids multi-million-line Actions logs and preserves the verified cache.
-  The MoonTVPlus pnpm/Next.js package build remains single-worker to avoid
-  memory spikes and duplicate package-manager processes.
+  `make toolchain/install` on an exact cache hit. GitHub Actions validates the
+  lightweight MoonTVPlus IPK only; it does not repeat the multi-hour target
+  Node/Next.js core build. The remote builder owns that separate core job.
 - The `moontvplus` recipe is lightweight by default: firmware builds package
   only the service, updater, and configuration files. The source checkout,
   target Node.js runtime, Node.js host tools, pnpm install, Next.js build, and
-  native module build are enabled only when the dedicated core Job passes
+  native module build are enabled only when an explicit core build sets
   `MOONTVPLUS_BUILD_CORE=1`. The resulting core archive includes its matching
   target Node.js binary, so firmware builds do not compile or install Node.js.
 - The dedicated `moontvplus-core` Release contains verified `2026.07.13-r10`
