@@ -100,6 +100,9 @@ development tooling, so no runtime theme files were imported.
 ## CI integration
 
 - `ysuolmai/OpenWRT-CI` was switched to the collection in commit `6f0000d`.
+  Its eMMC profiles select `luci-app-nginx` and the Simplified Chinese
+  translation in commit `8a673d8`; non-eMMC profiles leave the package
+  disabled.
 - `ysuolmai/openwrt-ci2` uses `libwrt.sh` for several workflows and
   `diy-script.sh` for the remaining active workflows. Both use the collection.
   `diy-mini.sh` has no repository references and was intentionally left alone.
