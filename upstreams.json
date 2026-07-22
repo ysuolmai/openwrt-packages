@@ -6,25 +6,19 @@
       "path": "frp",
       "upstreams": [
         {
-          "role": "openwrt-packaging",
-          "repository": "https://github.com/kenzok8/jell",
-          "branch": "main",
-          "path": "frp",
-          "commit": "ede45ec0b4c58b4e4c8a74f09af61f780325e8d0"
-        },
-        {
-          "role": "application-source",
+          "role": "canonical-application-source",
           "repository": "https://github.com/fatedier/frp",
           "branch": "dev",
           "path": "",
-          "commit": null,
+          "commit": "7b6e01f04f286632f0d23715aa17a3bc41234b5c",
           "tracking": "releases",
-          "version": "v0.66.0"
+          "version": "v0.70.0"
         }
       ],
-      "sync_strategy": "manual-fork",
+      "sync_strategy": "self-maintained",
       "local_changes": [
-        "Install the init scripts and UCI defaults from the binary packages",
+        "Maintain the OpenWrt packaging, init scripts and UCI defaults locally",
+        "Generate native TOML runtime configuration from the existing UCI model",
         "Run as root to match the target firmware",
         "Store the service enable switch in the common UCI section while accepting the legacy init section",
         "Default both services to disabled"

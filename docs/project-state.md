@@ -25,8 +25,8 @@ The collection currently owns:
 - `luci-app-moontvplus`
 - `luci-app-nginx`
 
-The FRPC and FRPS service switches are shown under Common Settings while still
-writing the `init.enabled` UCI option used by their init scripts. DDNS-Go
+The FRPC and FRPS service switches are shown under Common Settings and write
+the `common.enabled` UCI option used by their init scripts. DDNS-Go
 migrates the legacy `config` section and option names to the current `main`
 service section so its LuCI enable switch controls startup correctly.
 
@@ -97,6 +97,20 @@ optional local admin API credentials from the normal form. Versions
 `frpc/frps 0.66.0-r3`, `luci-app-frpc 2026.07.21-r6`, and
 `luci-app-frps 2026.07.21-r5` were installed and checked on both
 `192.168.8.1` and `172.28.1.225`.
+
+FRP now tracks only the canonical `fatedier/frp` releases; `kenzok8/jell` is
+no longer an upstream for either the core or its OpenWrt packaging. Version
+`0.70.0-r1` uses a pinned source hash and generates native TOML at runtime from
+the existing UCI model. Client proxies, visitors, plugins, domain arrays,
+server port ranges, authentication, TLS and logging fields are mapped without
+requiring users to recreate their normal LuCI settings. Legacy free-form and
+included fragments must contain TOML after this upgrade.
+
+The default generated configurations were verified with the existing 0.66.0
+binaries on `172.28.1.225`. Extended configurations covering escaping, arrays,
+plugins and visitors were verified with the official upstream 0.70.0 Linux
+binaries. No service or persistent configuration was changed on the test
+router, and `172.28.1.1` was not accessed for this migration.
 
 The local delta is intentionally narrow:
 

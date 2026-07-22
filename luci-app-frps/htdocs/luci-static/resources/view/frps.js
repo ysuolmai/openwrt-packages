@@ -13,13 +13,12 @@ const startupConf = [
 	[widgets.GroupSelect, 'group', _('Run daemon as group')],
 	[form.Flag, 'respawn', _('Respawn when crashed')],
 	[form.DynamicList, 'env', _('Environment variable'), _('OS environments pass to frp for config file template, see %s'.format(`<a href="https://github.com/fatedier/frp#configuration-file-template">frp README</a>`)), {placeholder: 'ENV_NAME=value'}],
-	[form.DynamicList, 'conf_inc', _('Additional configs'), _('Config files include in temporary config file'), {placeholder: '/etc/frp/frps.d/frps_full.ini'}]
+	[form.DynamicList, 'conf_inc', _('Additional configs'), _('TOML fragments appended to the generated configuration'), {placeholder: '/etc/frp/frps.d/custom.toml'}]
 ];
 
 const commonConf = [
 	[form.Value, 'bind_addr', _('Bind address'), _('BindAddr specifies the address that the server binds to.<br />By default, this value is "0.0.0.0".'), {datatype: 'ipaddr'}],
 	[form.Value, 'bind_port', _('Bind port'), _('BindPort specifies the port that the server listens on.<br />By default, this value is 7000.'), {datatype: 'port'}],
-	[form.Value, 'bind_udp_port', _('UDP bind port'), _('BindUdpPort specifies the UDP port that the server listens on. If this value is 0, the server will not listen for UDP connections.<br />By default, this value is 0.'), {datatype: 'port'}],
 	[form.Value, 'kcp_bind_port', _('KCP bind port'), _('BindKcpPort specifies the KCP port that the server listens on. If this value is 0, the server will not listen for KCP connections.<br />By default, this value is 0.'), {datatype: 'port'}],
 	[form.Value, 'quic_bind_port', _('QUIC bind port'), _('BindQuicPort specifies the QUIC port that the server listens on. If this value is 0, the server will not listen for QUIC connections.<br />By default, this value is 0.'), {datatype: 'port'}],
 	[form.Value, 'proxy_bind_addr', _('Proxy bind address'), _('ProxyBindAddr specifies the address that the proxy binds to. This value may be the same as BindAddr.<br />By default, this value is "0.0.0.0".'), {datatype: 'ipaddr'}],
@@ -45,7 +44,7 @@ const commonConf = [
 	[form.Value, 'allow_ports', _('Allow ports'), _('AllowPorts specifies a set of ports that clients are able to proxy to. If the length of this value is 0, all ports are allowed.<br />By default, this value is an empty set.')],
 	[form.Value, 'max_ports_per_client', _('Max ports per client'), _('MaxPortsPerClient specifies the maximum number of ports a single client may proxy to. If this value is 0, no limit will be applied.<br />By default, this value is 0.'), {datatype: 'uinteger'}],
 	[form.Value, 'heartbeat_timeout', _('Heartbeat timeout'), _('HeartBeatTimeout specifies the maximum time to wait for a heartbeat before terminating the connection. It is not recommended to change this value.<br />By default, this value is 90.'), {datatype: 'uinteger'}],
-	[form.DynamicList, '_', _('Additional settings'), _('This list can be used to specify some additional parameters which have not been included in this LuCI.'), {placeholder: 'Key-A=Value-A'}]
+	[form.DynamicList, '_', _('Additional settings'), _('This list can be used to append TOML settings which are not included in this LuCI.'), {placeholder: 'key = "value"'}]
 ];
 
 function setParams(o, params) {

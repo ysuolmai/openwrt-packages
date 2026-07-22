@@ -14,7 +14,7 @@ const startupConf = [
 	[widgets.GroupSelect, 'group', _('Run daemon as group')],
 	[form.Flag, 'respawn', _('Respawn when crashed')],
 	[form.DynamicList, 'env', _('Environment variable'), _('OS environments pass to frp for config file template, see %s.'.format('<a href="https://github.com/fatedier/frp#configuration-file-template">frp README</a>')), {placeholder: 'ENV_NAME=value'}],
-	[form.DynamicList, 'conf_inc', _('Additional configs'), _('Config files include in temporary config file'), {placeholder: '/etc/frp/frpc.d/frpc_full.ini'}]
+	[form.DynamicList, 'conf_inc', _('Additional configs'), _('TOML fragments appended to the generated configuration'), {placeholder: '/etc/frp/frpc.d/custom.toml'}]
 ];
 
 const commonConf = [
@@ -36,7 +36,7 @@ const advancedConf = [
 	[form.Flag, 'login_fail_exit', _('Exit when login fail'), _('LoginFailExit controls whether or not the client should exit after a failed login attempt. If false, the client will retry until a login attempt succeeds.<br />By default, this value is true.'), {datatype: 'bool', default: 'true'}],
 	[form.Value, 'heartbeat_interval', _('Heartbeat interval'), _('HeartBeatInterval specifies at what interval heartbeats are sent to the server, in seconds. It is not recommended to change this value.<br />By default, this value is 30.'), {datatype: 'uinteger'}],
 	[form.Value, 'heartbeat_timeout', _('Heartbeat timeout'), _('HeartBeatTimeout specifies the maximum allowed heartbeat response delay before the connection is terminated, in seconds. It is not recommended to change this value.<br />By default, this value is 90.'), {datatype: 'uinteger'}],
-	[form.DynamicList, '_', _('Additional settings'), _('This list can be used to specify some additional parameters which have not been included in this LuCI.'), {placeholder: 'Key-A=Value-A'}]
+	[form.DynamicList, '_', _('Additional settings'), _('This list can be used to append TOML settings which are not included in this LuCI.'), {placeholder: 'key = "value"'}]
 ];
 
 const baseProxyConf = [

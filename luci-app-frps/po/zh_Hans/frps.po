@@ -100,8 +100,8 @@ msgid "Common settings"
 msgstr "常规设置"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:15
-msgid "Config files include in temporary config file"
-msgstr "配置文件包含在临时配置文件中"
+msgid "TOML fragments appended to the generated configuration"
+msgstr "追加到生成配置中的 TOML 片段"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:43
 msgid "Custom 404 page"
@@ -366,10 +366,8 @@ msgstr ""
 "值默认为true。"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:47
-msgid ""
-"This list can be used to specify some additional parameters which have not "
-"been included in this LuCI."
-msgstr "此列表可用于指定此LuCI中未包括的一些其他参数。"
+msgid "This list can be used to append TOML settings which are not included in this LuCI."
+msgstr "此列表可用于追加此 LuCI 中未提供的 TOML 设置。"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:40
 msgid "Token"

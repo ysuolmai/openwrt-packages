@@ -1,0 +1,224 @@
+#!/bin/sh
+
+set -e
+
+IPKG_INSTROOT="${IPKG_INSTROOT:-}"
+. /lib/functions.sh
+
+SERVICE="${1:-}"
+OUTPUT="${2:-}"
+TMP="${OUTPUT}.tmp"
+
+fail() {
+	echo "frp-generate: $*" >&2
+	rm -f "$TMP"
+	exit 1
+}
+
+[ "$SERVICE" = frpc ] || [ "$SERVICE" = frps ] || fail 'service must be frpc or frps'
+[ -n "$OUTPUT" ] || fail 'output path is required'
+
+toml_escape() {
+	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+emit_string() {
+	printf '%s = "%s"\n' "$1" "$(toml_escape "$2")" >> "$TMP"
+}
+
+emit_integer() {
+	local digits
+	case "$2" in
+		''|'#') return 0 ;;
+		-*) digits="${2#-}" ;;
+		*) digits="$2" ;;
+	esac
+	[ -n "$digits" ] || fail "invalid integer for $1"
+	case "$digits" in *[!0-9]*) fail "invalid integer for $1" ;; esac
+	printf '%s = %s\n' "$1" "$2" >> "$TMP"
+}
+
+emit_boolean() {
+	case "$2" in
+		1|true|yes|on) value=true ;;
+		0|false|no|off) value=false ;;
+		'') return 0 ;;
+		*) fail "invalid boolean for $1" ;;
+	esac
+	printf '%s = %s\n' "$1" "$value" >> "$TMP"
+}
+
+emit_csv_array() {
+	local key="$1" input="$2" item first=1
+	[ -n "$input" ] || return 0
+	printf '%s = [' "$key" >> "$TMP"
+	while IFS= read -r item; do
+		item="$(printf '%s' "$item" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+		[ -n "$item" ] || continue
+		[ "$first" -eq 1 ] || printf ', ' >> "$TMP"
+		printf '"%s"' "$(toml_escape "$item")" >> "$TMP"
+		first=0
+	done <<-EOF
+	$(printf '%s' "$input" | tr ',' '\n')
+	EOF
+	printf ']\n' >> "$TMP"
+}
+
+emit_ports() {
+	local input="$1" item start end first=1
+	[ -n "$input" ] || return 0
+	printf 'allowPorts = [' >> "$TMP"
+	while IFS= read -r item; do
+		item="$(printf '%s' "$item" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+		[ -n "$item" ] || continue
+		[ "$first" -eq 1 ] || printf ', ' >> "$TMP"
+		case "$item" in
+			*-*)
+				start="${item%%-*}"
+				end="${item#*-}"
+				[ -n "$start" ] && [ -n "$end" ] || fail 'invalid allow_ports range'
+				case "$start$end" in *[!0-9]*) fail 'invalid allow_ports range' ;; esac
+				printf '{ start = %s, end = %s }' "$start" "$end" >> "$TMP"
+				;;
+			*)
+				case "$item" in *[!0-9]*) fail 'invalid allow_ports value' ;; esac
+				printf '{ single = %s }' "$item" >> "$TMP"
+				;;
+		esac
+		first=0
+	done <<-EOF
+	$(printf '%s' "$input" | tr ',' '\n')
+	EOF
+	printf ']\n' >> "$TMP"
+}
+
+emit_option() {
+	local section="$1" old="$2" new="$3" kind="$4" value
+	config_get value "$section" "$old"
+	[ -n "$value" ] || return 0
+	case "$kind" in
+		string) emit_string "$new" "$value" ;;
+		integer) emit_integer "$new" "$value" ;;
+		boolean) emit_boolean "$new" "$value" ;;
+		array) emit_csv_array "$new" "$value" ;;
+		*) fail "unknown mapping type $kind" ;;
+	esac
+}
+
+emit_options() {
+	local section="$1" mappings="$2" spec old new kind
+	for spec in $mappings; do
+		old="${spec%%:*}"
+		spec="${spec#*:}"
+		new="${spec%%:*}"
+		kind="${spec##*:}"
+		emit_option "$section" "$old" "$new" "$kind"
+	done
+}
+
+append_raw() {
+	printf '%s\n' "$1" >> "$TMP"
+}
+
+emit_frpc_common() {
+	emit_options common '
+		server_addr:serverAddr:string server_port:serverPort:integer
+		token:auth.token:string protocol:transport.protocol:string
+		tls_enable:transport.tls.enable:boolean log_level:log.level:string
+		http_proxy:transport.proxyURL:string log_file:log.to:string
+		log_max_days:log.maxDays:integer disable_log_color:log.disablePrintColor:boolean
+		tcp_mux:transport.tcpMux:boolean user:user:string
+		login_fail_exit:loginFailExit:boolean
+		heartbeat_interval:transport.heartbeatInterval:integer
+		heartbeat_timeout:transport.heartbeatTimeout:integer'
+	config_list_foreach common _ append_raw
+}
+
+emit_frpc_section() {
+	local section="$1" role name
+	[ "$section" != common ] || return 0
+	config_get role "$section" role
+	config_get name "$section" name "$section"
+	printf '\n[[%s]]\n' "$([ "$role" = visitor ] && echo visitors || echo proxies)" >> "$TMP"
+	emit_string name "$name"
+	emit_options "$section" '
+		type:type:string use_encryption:transport.useEncryption:boolean
+		use_compression:transport.useCompression:boolean sk:secretKey:string'
+	if [ "$role" = visitor ]; then
+		emit_options "$section" '
+			server_name:serverName:string bind_addr:bindAddr:string
+			bind_port:bindPort:integer'
+	else
+		emit_options "$section" '
+			local_ip:localIP:string local_port:localPort:integer
+			remote_port:remotePort:integer custom_domains:customDomains:array
+			subdomain:subdomain:string locations:locations:array
+			http_user:httpUser:string http_pwd:httpPassword:string
+			host_header_rewrite:hostHeaderRewrite:string'
+		emit_options "$section" 'plugin:plugin.type:string'
+		config_get plugin "$section" plugin
+		case "$plugin" in
+			http_proxy)
+				emit_options "$section" '
+					plugin_http_user:plugin.httpUser:string
+					plugin_http_passwd:plugin.httpPassword:string'
+				;;
+			socks5)
+				emit_options "$section" '
+					plugin_user:plugin.username:string
+					plugin_passwd:plugin.password:string'
+				;;
+			unix_domain_socket)
+				emit_options "$section" 'plugin_unix_path:plugin.unixPath:string'
+				;;
+		esac
+	fi
+	config_list_foreach "$section" _ append_raw
+}
+
+emit_frps_common() {
+	local allow_ports tls_mode
+	emit_options common '
+		bind_addr:bindAddr:string bind_port:bindPort:integer
+		kcp_bind_port:kcpBindPort:integer quic_bind_port:quicBindPort:integer
+		proxy_bind_addr:proxyBindAddr:string
+		vhost_http_port:vhostHTTPPort:integer vhost_https_port:vhostHTTPSPort:integer
+		vhost_http_timeout:vhostHTTPTimeout:integer
+		dashboard_addr:webServer.addr:string dashboard_port:webServer.port:integer
+		dashboard_user:webServer.user:string dashboard_pwd:webServer.password:string
+		assets_dir:webServer.assetsDir:string log_file:log.to:string
+		log_level:log.level:string log_max_days:log.maxDays:integer
+		disable_log_color:log.disablePrintColor:boolean token:auth.token:string
+		subdomain_host:subDomainHost:string tcp_mux:transport.tcpMux:boolean
+		custom_404_page:custom404Page:string
+		max_ports_per_client:maxPortsPerClient:integer
+		heartbeat_timeout:transport.heartbeatTimeout:integer'
+	config_get tls_mode common dashboard_tls_mode 0
+	case "$tls_mode" in
+		1|true|yes|on)
+			emit_option common dashboard_tls_cert_file webServer.tls.certFile string
+			emit_option common dashboard_tls_key_file webServer.tls.keyFile string
+			;;
+	esac
+	config_get allow_ports common allow_ports
+	emit_ports "$allow_ports"
+	config_list_foreach common _ append_raw
+}
+
+mkdir -p "$(dirname "$OUTPUT")"
+: > "$TMP"
+trap 'rm -f "$TMP"' EXIT
+config_load "$SERVICE"
+
+case "$SERVICE" in
+	frpc)
+		emit_frpc_common
+		config_foreach emit_frpc_section conf
+		;;
+	frps)
+		emit_frps_common
+		;;
+esac
+
+mv -f "$TMP" "$OUTPUT"
+trap - EXIT

@@ -1,14 +1,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=frp
-PKG_VERSION:=0.66.0
-PKG_RELEASE:=3
+PKG_VERSION:=0.70.0
+PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/fatedier/frp/tar.gz/v${PKG_VERSION}?
-PKG_HASH:=skip
+PKG_SOURCE_URL:=https://codeload.github.com/fatedier/frp/tar.gz/refs/tags/v$(PKG_VERSION)?
+PKG_HASH:=661554e336407880c444bf148b904f62f49c9442c4d71f3a2b0840dfbb12d678
 
-PKG_MAINTAINER:=
+PKG_MAINTAINER:=ysuolmai
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
@@ -26,8 +26,9 @@ define Package/frp/install
 	$(INSTALL_DIR) $(1)/usr/bin/
 	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/$(2) $(1)/usr/bin/
 	$(INSTALL_DIR) $(1)/etc/frp/$(2).d/
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/conf/legacy/$(2)_legacy_full.ini $(1)/etc/frp/$(2).d/
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/conf/$(2)_full_example.toml $(1)/etc/frp/$(2).d/
+	$(INSTALL_DIR) $(1)/usr/libexec/
+	$(INSTALL_BIN) ./files/frp-generate $(1)/usr/libexec/$(2)-generate
 	$(INSTALL_DIR) $(1)/etc/init.d/
 	$(INSTALL_BIN) ./files/$(2).init $(1)/etc/init.d/$(2)
 	$(INSTALL_DIR) $(1)/etc/config/
