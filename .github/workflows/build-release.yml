@@ -13,8 +13,7 @@ on:
         options:
           - all
           - frp
-          - luci-app-frpc
-          - luci-app-frps
+          - luci-app-frp
           - ddns-go
           - luci-app-ddns-go
           - luci-app-adguardhome
@@ -43,7 +42,7 @@ env:
   OPENWRT_BRANCH: main
   OPENWRT_CONFIG: IPQ60XX-WIFI-YES
   COLLECTION_PATHS: >-
-    frp luci-app-frpc luci-app-frps ddns-go luci-app-ddns-go
+    frp luci-app-frp ddns-go luci-app-ddns-go
     luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
     moontvplus luci-app-moontvplus
   SELECTED_PACKAGE: ${{ inputs.package || 'all' }}
@@ -54,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ (inputs.package || 'all') == 'all' && fromJSON('["frp","luci-app-frpc","luci-app-frps","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+        package: ${{ (inputs.package || 'all') == 'all' && fromJSON('["frp","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
         format: ${{ (inputs.format || 'ipk') == 'both' && fromJSON('["ipk","apk"]') || fromJSON(format('["{0}"]', inputs.format || 'ipk')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 350
@@ -70,15 +69,15 @@ jobs:
           case "$SELECTED_PACKAGE" in
             all)
               build_paths="$COLLECTION_PATHS"
-              expected_packages="frpc frps luci-app-frpc luci-app-frps ddns-go \
+              expected_packages="frp luci-app-frp ddns-go \
                 luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn sing-box \
                 luci-app-homeproxy moontvplus luci-app-moontvplus"
               ;;
             frp)
-              build_paths=frp
-              expected_packages="frpc frps"
+              build_paths="frp luci-app-frp"
+              expected_packages="frp luci-app-frp"
               ;;
-            luci-app-frpc|luci-app-frps|ddns-go|luci-app-ddns-go|\
+            luci-app-frp|ddns-go|luci-app-ddns-go|\
             luci-app-adguardhome|luci-theme-shadcn|sing-box|\
             luci-app-homeproxy|moontvplus|luci-app-moontvplus)
               build_paths="$SELECTED_PACKAGE"
@@ -155,11 +154,9 @@ jobs:
           CONFIG_PACKAGE_luci=y
           CONFIG_LUCI_LANG_zh_Hans=y
           CONFIG_PACKAGE_luci-theme-shadcn=y
-          CONFIG_PACKAGE_frpc=y
-          CONFIG_PACKAGE_frps=y
+          CONFIG_PACKAGE_frp=y
           CONFIG_PACKAGE_ddns-go=y
-          CONFIG_PACKAGE_luci-app-frpc=y
-          CONFIG_PACKAGE_luci-app-frps=y
+          CONFIG_PACKAGE_luci-app-frp=y
           CONFIG_PACKAGE_luci-app-ddns-go=y
           CONFIG_PACKAGE_luci-app-adguardhome=y
           CONFIG_PACKAGE_luci-theme-shadcn=y

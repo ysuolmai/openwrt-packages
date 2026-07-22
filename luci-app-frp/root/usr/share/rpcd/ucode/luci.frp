@@ -1,0 +1,11 @@
+#!/usr/bin/ucode
+'use strict';
+import { access, popen, readfile, writefile } from 'fs';
+const RUN='/var/run/frp-core', LOG=RUN+'/update.log', RESULT=RUN+'/update.result', LOCK=RUN+'/update.lock';
+function version(path) { let p=popen(path+' --version 2>/dev/null'); if (!p) return null; let v=trim(p.read('all')||''); p.close(); return v||null; }
+const methods={
+	core_status:{call:()=>({installed:!!access('/usr/lib/frp/frpc')&&!!access('/usr/lib/frp/frps'),frpc:version('/usr/lib/frp/frpc'),frps:version('/usr/lib/frp/frps')})},
+	update_start:{args:{force:false},call:(r)=>{if(access(LOCK)||trim(readfile(RESULT)||'')==='running')return{result:false,running:true};system('mkdir -p '+RUN);writefile(RESULT,'running\n');system('/usr/libexec/frp-update-core '+(r.args?.force?'force':'')+' >'+LOG+' 2>&1 &');return{result:true};}},
+	update_status:{call:()=>{let result=trim(readfile(RESULT)||'');return{running:!!access(LOCK)||result==='running',result,log:readfile(LOG)||''};}}
+};
+return {'luci.frp':methods};

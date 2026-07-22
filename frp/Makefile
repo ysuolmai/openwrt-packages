@@ -1,69 +1,52 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=frp
-PKG_VERSION:=0.70.0
+PKG_VERSION:=1.0.0
 PKG_RELEASE:=1
-
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/fatedier/frp/tar.gz/refs/tags/v$(PKG_VERSION)?
-PKG_HASH:=661554e336407880c444bf148b904f62f49c9442c4d71f3a2b0840dfbb12d678
-
 PKG_MAINTAINER:=ysuolmai
 PKG_LICENSE:=Apache-2.0
-PKG_LICENSE_FILES:=LICENSE
-
-PKG_BUILD_DEPENDS:=golang/host
-PKG_BUILD_PARALLEL:=1
-PKG_BUILD_FLAGS:=no-mips16
-
-GO_PKG:=github.com/fatedier/frp
-GO_PKG_BUILD_PKG:=github.com/fatedier/frp/cmd/...
+PKGARCH:=all
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+
+define Package/frp
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=Web Servers/Proxies
+  TITLE:=FRP client and server OpenWrt integration
+  URL:=https://github.com/fatedier/frp
+  DEPENDS:=+ca-bundle +curl +jsonfilter
+  PROVIDES:=frpc frps frp-common
+  REPLACES:=frpc frps frp-common
+  CONFLICTS:=frpc frps frp-common
+endef
+
+define Package/frp/description
+  Lightweight client and server integration. The latest official frpc and
+  frps cores are downloaded together from fatedier/frp stable releases.
+endef
+
+define Package/frp/conffiles
+/etc/config/frpc
+/etc/config/frps
+endef
+
+define Build/Compile
+endef
 
 define Package/frp/install
-	$(INSTALL_DIR) $(1)/usr/bin/
-	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/$(2) $(1)/usr/bin/
-	$(INSTALL_DIR) $(1)/etc/frp/$(2).d/
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/conf/$(2)_full_example.toml $(1)/etc/frp/$(2).d/
 	$(INSTALL_DIR) $(1)/usr/libexec/
-	$(INSTALL_BIN) ./files/frp-generate $(1)/usr/libexec/$(2)-generate
+	$(INSTALL_BIN) ./files/frp-generate $(1)/usr/libexec/
+	$(INSTALL_BIN) ./files/frp-update-core $(1)/usr/libexec/
+	$(INSTALL_DIR) $(1)/etc/frp/frpc.d/ $(1)/etc/frp/frps.d/
 	$(INSTALL_DIR) $(1)/etc/init.d/
-	$(INSTALL_BIN) ./files/$(2).init $(1)/etc/init.d/$(2)
+	$(INSTALL_BIN) ./files/frpc.init $(1)/etc/init.d/frpc
+	$(INSTALL_BIN) ./files/frps.init $(1)/etc/init.d/frps
 	$(INSTALL_DIR) $(1)/etc/config/
-	$(INSTALL_CONF) ./files/$(2).config $(1)/etc/config/$(2)
-	[ ! -f ./files/$(2).uci-defaults ] || { \
-		$(INSTALL_DIR) $(1)/etc/uci-defaults/; \
-		$(INSTALL_BIN) ./files/$(2).uci-defaults $(1)/etc/uci-defaults/90-$(2); \
-	}
+	$(INSTALL_CONF) ./files/frpc.config $(1)/etc/config/frpc
+	$(INSTALL_CONF) ./files/frps.config $(1)/etc/config/frps
+	$(INSTALL_DIR) $(1)/etc/uci-defaults/
+	$(INSTALL_BIN) ./files/frpc.uci-defaults $(1)/etc/uci-defaults/90-frpc
 endef
 
-define Package/frp/template
-  define Package/$(1)
-    SECTION:=net
-    CATEGORY:=Network
-    SUBMENU:=Web Servers/Proxies
-    TITLE:=$(1) - fast reverse proxy $(2)
-    URL:=https://github.com/fatedier/frp
-    DEPENDS:=$(GO_ARCH_DEPENDS)
-  endef
-
-  define Package/$(1)/description
-    $(1) is a fast reverse proxy $(2) to help you expose a local server behind
-    a NAT or firewall to the internet.
-  endef
-
-  define Package/$(1)/conffiles
-/etc/config/$(1)
-  endef
-
-  define Package/$(1)/install
-    $(call Package/frp/install,$$(1),$(1))
-  endef
-endef
-
-$(eval $(call Package/frp/template,frpc,client))
-$(eval $(call Package/frp/template,frps,server))
-$(eval $(call BuildPackage,frpc))
-$(eval $(call BuildPackage,frps))
+$(eval $(call BuildPackage,frp))

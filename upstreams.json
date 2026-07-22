@@ -19,14 +19,15 @@
       "local_changes": [
         "Maintain the OpenWrt packaging, init scripts and UCI defaults locally",
         "Generate native TOML runtime configuration from the existing UCI model",
+        "Download and verify both official cores dynamically from the latest stable release",
         "Run as root to match the target firmware",
         "Store the service enable switch in the common UCI section while accepting the legacy init section",
         "Default both services to disabled"
       ]
     },
     {
-      "name": "luci-app-frpc",
-      "path": "luci-app-frpc",
+      "name": "luci-app-frp",
+      "path": "luci-app-frp",
       "upstreams": [
         {
           "role": "openwrt-packaging",
@@ -34,19 +35,7 @@
           "branch": "master",
           "path": "applications/luci-app-frpc",
           "commit": "c4b9631522b25d85f3e2d977fb6e6bc3978ca5f3"
-        }
-      ],
-      "sync_strategy": "manual-fork",
-      "local_changes": [
-        "Expose the service enable switch directly in Common Settings",
-        "Keep rarely used frpc admin API fields out of the normal UI",
-        "Detect running state without assuming a fixed procd instance name"
-      ]
-    },
-    {
-      "name": "luci-app-frps",
-      "path": "luci-app-frps",
-      "upstreams": [
+        },
         {
           "role": "openwrt-packaging",
           "repository": "https://github.com/immortalwrt/luci",
@@ -57,8 +46,10 @@
       ],
       "sync_strategy": "manual-fork",
       "local_changes": [
-        "Expose the service enable switch directly in Common Settings",
-        "Detect running state without assuming a fixed procd instance name"
+        "Combine core management, client and server pages under one tabbed application",
+        "Expose both service switches directly in their Common Settings",
+        "Keep rarely used frpc admin API fields out of the normal UI",
+        "Detect running state without assuming fixed procd instance names"
       ]
     },
     {

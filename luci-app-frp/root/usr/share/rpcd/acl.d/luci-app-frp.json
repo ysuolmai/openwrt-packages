@@ -1,0 +1,14 @@
+{
+	"luci-app-frp": {
+		"description": "Grant access to the FRP manager",
+		"read": {
+			"file": { "/etc/passwd": [ "read" ], "/etc/group": [ "read" ] },
+			"uci": [ "frpc", "frps" ],
+			"ubus": { "service": [ "list" ], "luci.frp": [ "core_status", "update_status" ] }
+		},
+		"write": {
+			"uci": [ "frpc", "frps" ],
+			"ubus": { "luci.frp": [ "update_start" ] }
+		}
+	}
+}

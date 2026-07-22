@@ -13,8 +13,7 @@ conflicting feed or third-party copies first.
 The collection currently owns:
 
 - `frp`
-- `luci-app-frpc`
-- `luci-app-frps`
+- `luci-app-frp`
 - `ddns-go`
 - `luci-app-ddns-go`
 - `luci-app-adguardhome`
@@ -99,9 +98,9 @@ optional local admin API credentials from the normal form. Versions
 `192.168.8.1` and `172.28.1.225`.
 
 FRP now tracks only the canonical `fatedier/frp` releases; `kenzok8/jell` is
-no longer an upstream for either the core or its OpenWrt packaging. Version
-`0.70.0-r1` uses a pinned source hash and generates native TOML at runtime from
-the existing UCI model. Client proxies, visitors, plugins, domain arrays,
+no longer an upstream for either the core or its OpenWrt packaging. The
+architecture-independent packages generate native TOML at runtime from the
+existing UCI model. Client proxies, visitors, plugins, domain arrays,
 server port ranges, authentication, TLS and logging fields are mapped without
 requiring users to recreate their normal LuCI settings. Legacy free-form and
 included fragments must contain TOML after this upgrade.
@@ -111,6 +110,14 @@ binaries on `172.28.1.225`. Extended configurations covering escaping, arrays,
 plugins and visitors were verified with the official upstream 0.70.0 Linux
 binaries. No service or persistent configuration was changed on the test
 router, and `172.28.1.1` was not accessed for this migration.
+
+The lightweight `frp` package resolves the latest stable release from
+the upstream GitHub API at runtime, maps the router architecture to the
+matching official Linux archive, verifies `frp_sha256_checksums.txt`, and
+atomically installs both `frpc` and `frps` with rollback. `luci-app-frp`
+provides Core, Client and Server tabs under one menu entry. The official
+binaries retain the embedded FRPS Dashboard, while the two procd services keep
+independent UCI and TOML configurations and can run concurrently.
 
 The local delta is intentionally narrow:
 

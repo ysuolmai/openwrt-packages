@@ -1,0 +1,103 @@
+#!/bin/sh
+
+set -e
+
+CORE_DIR=/usr/lib/frp
+RUN_DIR=/var/run/frp-core
+LOCK_DIR=$RUN_DIR/update.lock
+RESULT=$RUN_DIR/update.result
+WORK=$CORE_DIR/.update.$$
+API=https://api.github.com/repos/fatedier/frp/releases/latest
+
+finish() {
+	rc=$?
+	rm -rf "$WORK" "$LOCK_DIR"
+	[ "$rc" -eq 0 ] || echo failed > "$RESULT"
+	trap - EXIT INT TERM
+	exit "$rc"
+}
+trap finish EXIT INT TERM
+
+mkdir -p "$RUN_DIR" "$CORE_DIR"
+mkdir "$LOCK_DIR" 2>/dev/null || { echo 'Another FRP core update is running.'; exit 1; }
+echo running > "$RESULT"
+mkdir -p "$WORK/extract"
+
+case "$(uname -m)" in
+	x86_64) arch=amd64 ;;
+	aarch64|arm64) arch=arm64 ;;
+	armv7l|armv7*) arch=arm_hf ;;
+	armv6l|armv6*) arch=arm ;;
+	mips) arch=mips ;;
+	mipsel) arch=mipsle ;;
+	mips64) arch=mips64 ;;
+	mips64el) arch=mips64le ;;
+	loongarch64) arch=loong64 ;;
+	riscv64) arch=riscv64 ;;
+	*) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
+esac
+
+echo "Checking the latest stable FRP release for linux_$arch..."
+curl -fsSL --retry 3 --connect-timeout 15 "$API" -o "$WORK/release.json"
+tag="$(jsonfilter -i "$WORK/release.json" -e '@.tag_name')"
+version="${tag#v}"
+[ -n "$tag" ] && [ -n "$version" ] || { echo 'Release metadata has no version.'; exit 1; }
+asset="frp_${version}_linux_${arch}.tar.gz"
+urls="$(jsonfilter -i "$WORK/release.json" -e '@.assets[*].browser_download_url')"
+archive_url="$(printf '%s\n' "$urls" | grep "/$asset$" | head -n1)"
+checksum_url="$(printf '%s\n' "$urls" | grep '/frp_sha256_checksums.txt$' | head -n1)"
+[ -n "$archive_url" ] && [ -n "$checksum_url" ] || { echo "Release $tag has no asset for linux_$arch."; exit 1; }
+
+current=""
+[ ! -x "$CORE_DIR/frpc" ] || current="$($CORE_DIR/frpc --version 2>/dev/null | head -n1)"
+if [ "$current" = "$version" ] && [ "${1:-}" != force ]; then
+	echo "FRP $version is already installed."
+	echo success > "$RESULT"
+	exit 0
+fi
+
+echo "Downloading FRP $version..."
+curl -fsSL --retry 3 --connect-timeout 15 "$archive_url" -o "$WORK/$asset"
+curl -fsSL --retry 3 --connect-timeout 15 "$checksum_url" -o "$WORK/checksums.txt"
+expected="$(awk -v file="$asset" '$2 == file || $2 == "*" file { print $1; exit }' "$WORK/checksums.txt")"
+[ -n "$expected" ] || { echo 'Checksum entry is missing.'; exit 1; }
+actual="$(sha256sum "$WORK/$asset" | awk '{print $1}')"
+[ "$actual" = "$expected" ] || { echo 'Checksum verification failed.'; exit 1; }
+
+tar -xzf "$WORK/$asset" -C "$WORK/extract"
+root="$WORK/extract/frp_${version}_linux_${arch}"
+for binary in frpc frps; do
+	[ -f "$root/$binary" ] || { echo "Archive is missing $binary."; exit 1; }
+	chmod 755 "$root/$binary"
+	[ "$($root/$binary --version 2>/dev/null | head -n1)" = "$version" ] || { echo "$binary version check failed."; exit 1; }
+done
+
+frpc_running=0; frps_running=0
+/etc/init.d/frpc running >/dev/null 2>&1 && frpc_running=1
+/etc/init.d/frps running >/dev/null 2>&1 && frps_running=1
+/etc/init.d/frpc stop >/dev/null 2>&1 || true
+/etc/init.d/frps stop >/dev/null 2>&1 || true
+
+for binary in frpc frps; do
+	[ ! -f "$CORE_DIR/$binary" ] || cp -f "$CORE_DIR/$binary" "$WORK/$binary.old"
+	cp "$root/$binary" "$CORE_DIR/$binary.new"
+	chmod 755 "$CORE_DIR/$binary.new"
+	mv -f "$CORE_DIR/$binary.new" "$CORE_DIR/$binary"
+done
+
+rollback() {
+	for binary in frpc frps; do
+		if [ -f "$WORK/$binary.old" ]; then
+			mv -f "$WORK/$binary.old" "$CORE_DIR/$binary"
+		else
+			rm -f "$CORE_DIR/$binary"
+		fi
+	done
+}
+[ "$($CORE_DIR/frpc --version 2>/dev/null | head -n1)" = "$version" ] &&
+	[ "$($CORE_DIR/frps --version 2>/dev/null | head -n1)" = "$version" ] || { rollback; echo 'Installed core validation failed.'; exit 1; }
+
+[ "$frpc_running" -eq 0 ] || /etc/init.d/frpc start
+[ "$frps_running" -eq 0 ] || /etc/init.d/frps start
+echo "Installed official FRP $version core (frpc and frps)."
+echo success > "$RESULT"
