@@ -119,6 +119,10 @@ provides Core, Client and Server tabs under one menu entry. The official
 binaries retain the embedded FRPS Dashboard, while the two procd services keep
 independent UCI and TOML configurations and can run concurrently.
 
+The merged `frp_1.0.0-r1_all.ipk` and `luci-app-frp` IPK were built and
+verified together by GitHub Actions run `29928490032`. The lightweight package
+build no longer invokes the Go or Node.js toolchains.
+
 The local delta is intentionally narrow:
 
 - Dashboard field for the main URLTest URL, next to the URLTest node selection.

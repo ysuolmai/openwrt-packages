@@ -141,6 +141,10 @@ jobs:
               \( -type d -o -type l \) -name "$package" -prune \
               -exec rm -rf -- {} +
           done
+          find wrt/package -mindepth 2 -maxdepth 5 \
+            \( -type d -o -type l \) \
+            \( -name luci-app-frpc -o -name luci-app-frps \) -prune \
+            -exec rm -rf -- {} +
           mkdir -p wrt/package/ysuolmai
           for package in $COLLECTION_PATHS; do
             cp -a "$package" "wrt/package/ysuolmai/$package"
