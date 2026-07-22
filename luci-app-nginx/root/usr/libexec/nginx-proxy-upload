@@ -1,0 +1,63 @@
+#!/bin/sh
+
+set -eu
+
+UPLOAD=/tmp/nginx-proxy-upload
+NORMALIZED=/tmp/nginx-proxy-upload.normalized
+CERT_DIR=/etc/nginx-proxy/certs
+IDENTIFIER="$1"
+KIND="$2"
+
+cleanup() {
+	rm -f "$UPLOAD" "$NORMALIZED"
+}
+trap cleanup EXIT
+
+case "$IDENTIFIER" in
+	''|*[!A-Za-z0-9_]*)
+		echo 'invalid site identifier' >&2
+		exit 1
+		;;
+esac
+[ "$(expr length "$IDENTIFIER")" -le 64 ] || {
+	echo 'invalid site identifier' >&2
+	exit 1
+}
+
+[ -f "$UPLOAD" ] && [ -s "$UPLOAD" ] || {
+	echo 'empty upload' >&2
+	exit 1
+}
+[ "$(wc -c < "$UPLOAD")" -le 524288 ] || {
+	echo 'uploaded file is too large' >&2
+	exit 1
+}
+tr -d '\r' < "$UPLOAD" > "$NORMALIZED"
+
+case "$KIND" in
+	pem)
+		grep -q '^-----BEGIN CERTIFICATE-----$' "$NORMALIZED" &&
+			grep -q '^-----END CERTIFICATE-----$' "$NORMALIZED" || {
+			echo 'invalid PEM certificate' >&2
+			exit 1
+		}
+		TARGET="$CERT_DIR/$IDENTIFIER.cert.pem"
+		;;
+	key)
+		grep -Eq '^-----BEGIN (RSA |EC )?PRIVATE KEY-----$' "$NORMALIZED" &&
+			grep -Eq '^-----END (RSA |EC )?PRIVATE KEY-----$' "$NORMALIZED" || {
+			echo 'invalid KEY file' >&2
+			exit 1
+		}
+		TARGET="$CERT_DIR/$IDENTIFIER.key"
+		;;
+	*)
+		echo 'invalid file type' >&2
+		exit 1
+		;;
+esac
+
+mkdir -p "$CERT_DIR"
+cp "$NORMALIZED" "$TARGET.new"
+chmod 600 "$TARGET.new"
+mv -f "$TARGET.new" "$TARGET"

@@ -42,6 +42,24 @@ const methods = {
 				error: result.status === 0 ? null : trim(result.output)
 			};
 		}
+	},
+
+	upload: {
+		args: { section: '', kind: '' },
+		call: function(request) {
+			let section = request.args?.section;
+			let kind = request.args?.kind;
+			if (!match(section || '', /^[A-Za-z0-9_]{1,64}$/))
+				return { success: false, error: 'invalid site identifier' };
+			if (kind !== 'pem' && kind !== 'key')
+				return { success: false, error: 'invalid file type' };
+
+			let result = run('/usr/libexec/nginx-proxy-upload ' + section + ' ' + kind);
+			return {
+				success: result.status === 0,
+				error: result.status === 0 ? null : trim(result.output)
+			};
+		}
 	}
 };
 

@@ -8,6 +8,7 @@ set -e
 OUTPUT="$1"
 BODY="$OUTPUT.body"
 ALLOW="$OUTPUT.allow"
+NAMES="$OUTPUT.names"
 ROUTES=0
 FIRST_CERT=
 FIRST_KEY=
@@ -19,7 +20,7 @@ HTTPS_PORT=443
 
 fail() {
 	echo "nginx-proxy: $*" >&2
-	rm -f "$BODY" "$ALLOW" "$OUTPUT"
+	rm -f "$BODY" "$ALLOW" "$NAMES" "$OUTPUT"
 	exit 1
 }
 
@@ -44,7 +45,7 @@ valid_path() {
 }
 
 emit_allow_network() {
-	local network="$1" subnets subnet network_addr prefix
+	local network="$1" subnets subnet network_addr prefix addresses address
 
 	network_get_subnets subnets "$network" 2>/dev/null || subnets=
 	for subnet in $subnets; do
@@ -57,6 +58,16 @@ emit_allow_network() {
 	network_get_subnets6 subnets "$network" 2>/dev/null || subnets=
 	for subnet in $subnets; do
 		echo "        allow $subnet;" >> "$ALLOW"
+	done
+
+	network_get_ipaddrs addresses "$network" 2>/dev/null || addresses=
+	for address in $addresses; do
+		echo "$address" >> "$NAMES"
+	done
+
+	network_get_ipaddrs6 addresses "$network" 2>/dev/null || addresses=
+	for address in $addresses; do
+		echo "[$address]" >> "$NAMES"
 	done
 }
 
@@ -75,7 +86,7 @@ emit_proxy_headers() {
 }
 
 emit_proxy() {
-	local section="$1" enabled domain scheme backend port cert key verify_tls target
+	local section="$1" enabled domain scheme backend port cert key cert_id verify_tls target
 
 	config_get_bool enabled "$section" enabled 1
 	[ "$enabled" -eq 1 ] || return 0
@@ -83,8 +94,18 @@ emit_proxy() {
 	config_get scheme "$section" scheme http
 	config_get backend "$section" backend
 	config_get port "$section" port
-	config_get cert "$section" certificate
-	config_get key "$section" private_key
+	config_get cert_id "$section" cert_id
+	case "$cert_id" in
+		''|*[!A-Za-z0-9_]*) cert_id= ;;
+	esac
+	cert="/etc/nginx-proxy/certs/$cert_id.cert.pem"
+	key="/etc/nginx-proxy/certs/$cert_id.key"
+	if [ -z "$cert_id" ] || [ ! -r "$cert" ]; then
+		config_get cert "$section" certificate
+	fi
+	if [ -z "$cert_id" ] || [ ! -r "$key" ]; then
+		config_get key "$section" private_key
+	fi
 	config_get_bool verify_tls "$section" verify_tls 0
 
 	valid_domain "$domain" || fail "invalid domain in $section"
@@ -136,16 +157,22 @@ EOF
 	ROUTES=$((ROUTES + 1))
 }
 
-rm -f "$BODY" "$ALLOW" "$OUTPUT"
-touch "$BODY" "$ALLOW"
+rm -f "$BODY" "$ALLOW" "$NAMES" "$OUTPUT"
+touch "$BODY" "$ALLOW" "$NAMES"
 network_flush_cache
 
 config_load nginx_proxy
 config_get HTTP_PORT main management_http_port 80
 config_get HTTPS_PORT main management_https_port 443
 config_get_bool MANAGEMENT_HTTPS main management_https 0
-config_get MANAGEMENT_CERT main management_certificate
-config_get MANAGEMENT_KEY main management_private_key
+MANAGEMENT_CERT=/etc/nginx-proxy/certs/main.cert.pem
+MANAGEMENT_KEY=/etc/nginx-proxy/certs/main.key
+if [ ! -r "$MANAGEMENT_CERT" ]; then
+	config_get MANAGEMENT_CERT main management_certificate
+fi
+if [ ! -r "$MANAGEMENT_KEY" ]; then
+	config_get MANAGEMENT_KEY main management_private_key
+fi
 
 valid_port "$HTTP_PORT" || fail 'invalid management HTTP port'
 valid_port "$HTTPS_PORT" || fail 'invalid HTTPS port'
@@ -153,6 +180,7 @@ valid_port "$HTTPS_PORT" || fail 'invalid HTTPS port'
 
 config_list_foreach main management_network emit_allow_network
 [ -s "$ALLOW" ] || fail 'no address found for a management network'
+[ -s "$NAMES" ] || fail 'no IP address found for a management network'
 
 if [ "$MANAGEMENT_HTTPS" -eq 1 ]; then
 	valid_path "$MANAGEMENT_CERT" || fail 'management certificate is missing or outside an allowed directory'
@@ -180,10 +208,19 @@ http {
         listen $HTTP_PORT default_server;
         listen [::]:$HTTP_PORT default_server;
         server_name _;
+        return 444;
+    }
+
+    server {
+        listen $HTTP_PORT;
+        listen [::]:$HTTP_PORT;
+        server_name $(tr '\n' ' ' < "$NAMES");
 EOF
 cat "$ALLOW" >> "$OUTPUT"
 cat >> "$OUTPUT" <<-'EOF'
         deny all;
+        error_page 403 = @drop;
+        location @drop { return 444; }
         location / {
             proxy_pass http://127.0.0.1:8080;
 	EOF
@@ -203,10 +240,22 @@ if [ "$MANAGEMENT_HTTPS" -eq 1 ]; then
         ssl_certificate $MANAGEMENT_CERT;
         ssl_certificate_key $MANAGEMENT_KEY;
         ssl_protocols TLSv1.2 TLSv1.3;
+        return 444;
+    }
+
+    server {
+        listen $HTTPS_PORT ssl;
+        listen [::]:$HTTPS_PORT ssl;
+        server_name $(tr '\n' ' ' < "$NAMES");
+        ssl_certificate $MANAGEMENT_CERT;
+        ssl_certificate_key $MANAGEMENT_KEY;
+        ssl_protocols TLSv1.2 TLSv1.3;
 EOF
 	cat "$ALLOW" >> "$OUTPUT"
 	cat >> "$OUTPUT" <<-'EOF'
         deny all;
+        error_page 403 = @drop;
+        location @drop { return 444; }
         location / {
             proxy_pass http://127.0.0.1:8080;
 	EOF
@@ -231,4 +280,4 @@ fi
 
 cat "$BODY" >> "$OUTPUT"
 echo '}' >> "$OUTPUT"
-rm -f "$BODY" "$ALLOW"
+rm -f "$BODY" "$ALLOW" "$NAMES"

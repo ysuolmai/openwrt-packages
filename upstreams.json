@@ -278,7 +278,8 @@
       "local_changes": [
         "Run an isolated nginx configuration for HTTPS reverse proxies",
         "Keep uhttpd on loopback and proxy trusted IP-based LuCI access",
-        "Reject unmatched WAN virtual hosts and restore uhttpd if activation fails"
+        "Reject unmatched WAN virtual hosts and restore uhttpd if activation fails",
+        "Validate one PEM and one KEY upload per site and store them under stable unique identifiers"
       ]
     }
   ]

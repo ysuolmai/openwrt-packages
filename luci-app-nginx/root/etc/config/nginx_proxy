@@ -4,8 +4,6 @@ config global 'main'
 	option management_http_port '80'
 	option management_https '0'
 	option management_https_port '443'
-	option management_certificate ''
-	option management_private_key ''
 	option open_firewall '1'
 	option firewall_zone 'wan'
 

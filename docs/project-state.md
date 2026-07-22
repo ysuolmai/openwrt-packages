@@ -62,6 +62,21 @@ the stock nginx service has never initialized `/var/lib/nginx`. The fix was
 installed and verified on `172.28.1.1` with nginx 1.30.3: nginx owns port 80,
 uhttpd listens only on loopback port 8080, and IP-based LuCI access works.
 
+Version `1.0.0-r3` replaces the generic file browser with one PEM upload and
+one KEY upload for each proxy. Uploaded files are validated and stored under a
+stable, generated site identifier, so identical original filenames cannot
+overwrite another site's credentials. Existing certificate path options remain
+supported for upgrades. The LuCI apply handler also tolerates rpcd's ubus code
+5 no-response result after UCI has already been applied, then runs the package's
+own validated activation step.
+
+The r3 files were installed and tested directly on `172.28.1.1`. Its existing
+`axonhub.wahlau.eu.org` route was migrated to the generated certificate paths
+and returns HTTP 200 through HTTPS. Router-IP requests still reach LuCI, while
+an unconfigured Host is closed with nginx status 444 instead of displaying an
+nginx error page. Both PEM and KEY uploads were exercised through the rpcd
+method, and the generated nginx configuration and service state passed checks.
+
 ## HomeProxy decision
 
 HomeProxy uses the VIKINGYFY implementation rather than the previous

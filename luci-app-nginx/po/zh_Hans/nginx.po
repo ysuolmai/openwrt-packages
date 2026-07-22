@@ -31,12 +31,6 @@ msgstr "通过 HTTPS 访问 LuCI"
 msgid "HTTPS port"
 msgstr "HTTPS 端口"
 
-msgid "LuCI certificate (PEM)"
-msgstr "LuCI 证书文件（PEM）"
-
-msgid "LuCI private key (KEY/PEM)"
-msgstr "LuCI 私钥文件（KEY/PEM）"
-
 msgid "Allow HTTP/HTTPS from WAN"
 msgstr "允许从 WAN 访问 HTTP/HTTPS"
 
@@ -58,11 +52,17 @@ msgstr "后端地址"
 msgid "Backend port"
 msgstr "后端端口"
 
-msgid "Certificate (PEM)"
-msgstr "证书文件（PEM）"
+msgid "Upload PEM"
+msgstr "上传 PEM"
 
-msgid "Private key (KEY/PEM)"
-msgstr "私钥文件（KEY/PEM）"
+msgid "Upload KEY"
+msgstr "上传 KEY"
+
+msgid "%s uploaded"
+msgstr "%s 已上传"
+
+msgid "Upload failed"
+msgstr "上传失败"
 
 msgid "Verify backend certificate"
 msgstr "验证后端证书"

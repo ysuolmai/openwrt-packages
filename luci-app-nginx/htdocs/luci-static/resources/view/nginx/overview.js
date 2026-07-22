@@ -9,6 +9,12 @@
 
 var callStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'status', expect: {} });
 var callApply = rpc.declare({ object: 'luci.nginx-proxy', method: 'apply', expect: {} });
+var callUpload = rpc.declare({
+	object: 'luci.nginx-proxy',
+	method: 'upload',
+	params: [ 'section', 'kind' ],
+	expect: {}
+});
 
 function statusMarkup(running) {
 	return '<span id="nginx-proxy-status" style="color:' +
@@ -20,6 +26,28 @@ function validateDomain(sectionId, value) {
 	if (!value || !/^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/.test(value))
 		return _('Enter one valid domain name, optionally beginning with *.');
 	return true;
+}
+
+function uploadTlsFile(kind, ev, sectionId) {
+	var label = kind === 'pem' ? 'PEM' : 'KEY';
+	var storageId = 'main';
+	if (sectionId !== 'main') {
+		storageId = uci.get('nginx_proxy', sectionId, 'cert_id');
+		if (!storageId) {
+			storageId = 'site_' + Date.now().toString(36) +
+				Math.random().toString(36).substring(2, 10);
+			uci.set('nginx_proxy', sectionId, 'cert_id', storageId);
+		}
+	}
+	return ui.uploadFile('/tmp/nginx-proxy-upload', ev.target).then(function() {
+		return callUpload(storageId, kind);
+	}).then(function(result) {
+		if (!result.success)
+			throw new Error(result.error || _('Upload failed'));
+		ui.addNotification(null, E('p', {}, _('%s uploaded').format(label)));
+	}).catch(function(err) {
+		ui.addNotification(null, E('p', {}, err.message), 'error');
+	});
 }
 
 return view.extend({
@@ -64,14 +92,16 @@ return view.extend({
 		o.default = '443';
 		o.rmempty = false;
 
-		o = s.option(form.FileUpload, 'management_certificate', _('LuCI certificate (PEM)'));
-		o.root_directory = '/etc/luci-uploads';
-		o.enable_remove = false;
+		o = s.option(form.Button, '_management_pem', 'PEM');
+		o.inputstyle = 'action';
+		o.inputtitle = _('Upload PEM');
+		o.onclick = L.bind(uploadTlsFile, null, 'pem');
 		o.depends('management_https', '1');
 
-		o = s.option(form.FileUpload, 'management_private_key', _('LuCI private key (KEY/PEM)'));
-		o.root_directory = '/etc/luci-uploads';
-		o.enable_remove = false;
+		o = s.option(form.Button, '_management_key', 'KEY');
+		o.inputstyle = 'action';
+		o.inputtitle = _('Upload KEY');
+		o.onclick = L.bind(uploadTlsFile, null, 'key');
 		o.depends('management_https', '1');
 
 		o = s.option(form.Flag, 'open_firewall', _('Allow HTTP/HTTPS from WAN'));
@@ -108,17 +138,17 @@ return view.extend({
 		o.datatype = 'port';
 		o.rmempty = false;
 
-		o = s.option(form.FileUpload, 'certificate', _('Certificate (PEM)'));
-		o.root_directory = '/etc/luci-uploads';
-		o.enable_remove = false;
+		o = s.option(form.Button, '_pem', 'PEM');
+		o.inputstyle = 'action';
+		o.inputtitle = _('Upload PEM');
+		o.onclick = L.bind(uploadTlsFile, null, 'pem');
 		o.modalonly = true;
-		o.rmempty = false;
 
-		o = s.option(form.FileUpload, 'private_key', _('Private key (KEY/PEM)'));
-		o.root_directory = '/etc/luci-uploads';
-		o.enable_remove = false;
+		o = s.option(form.Button, '_key', 'KEY');
+		o.inputstyle = 'action';
+		o.inputtitle = _('Upload KEY');
+		o.onclick = L.bind(uploadTlsFile, null, 'key');
 		o.modalonly = true;
-		o.rmempty = false;
 
 		o = s.option(form.Flag, 'verify_tls', _('Verify backend certificate'));
 		o.default = '0';
@@ -142,7 +172,11 @@ return view.extend({
 
 	handleSaveApply: function(ev, mode) {
 		return this.handleSave(ev).then(function() {
-			return uci.apply();
+			return uci.apply().catch(function(err) {
+				if (err === 5 || (err && (err.code === 5 || /ubus code 5/.test(err.message || ''))))
+					return;
+				throw err;
+			});
 		}).then(function() {
 			return callApply();
 		}).then(function(result) {
