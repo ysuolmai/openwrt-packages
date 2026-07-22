@@ -1,0 +1,144 @@
+#!/bin/sh
+
+set -u
+
+BACKUP_DIR=/etc/nginx-proxy
+UHTTPD_BACKUP=$BACKUP_DIR/uhttpd.backup
+CONFIG_FILE=/var/etc/nginx-proxy.conf
+GENERATOR=/usr/libexec/nginx-proxy-generate
+
+log() {
+	echo "nginx-proxy: $*"
+}
+
+enabled() {
+	[ "$(uci -q get nginx_proxy.main.enabled)" = 1 ]
+}
+
+backup_uhttpd() {
+	[ -s "$UHTTPD_BACKUP" ] && return 0
+	mkdir -p "$BACKUP_DIR"
+	uci -q export uhttpd > "$UHTTPD_BACKUP.new" || return 1
+	mv "$UHTTPD_BACKUP.new" "$UHTTPD_BACKUP"
+}
+
+take_over_uhttpd() {
+	backup_uhttpd || return 1
+	uci -q delete uhttpd.main.listen_http
+	uci -q delete uhttpd.main.listen_https
+	uci -q add_list uhttpd.main.listen_http='127.0.0.1:8080'
+	uci -q add_list uhttpd.main.listen_http='[::1]:8080'
+	uci -q set uhttpd.main.redirect_https='0'
+	uci -q commit uhttpd
+	/etc/init.d/uhttpd restart
+}
+
+restore_uhttpd() {
+	[ -s "$UHTTPD_BACKUP" ] || return 0
+	uci -q revert uhttpd
+	uci -q import uhttpd < "$UHTTPD_BACKUP" || return 1
+	uci -q commit uhttpd
+	/etc/init.d/uhttpd restart
+	rm -f "$UHTTPD_BACKUP"
+}
+
+delete_firewall_rules() {
+	uci -q delete firewall.nginx_proxy_http
+	uci -q delete firewall.nginx_proxy_https
+}
+
+sync_firewall() {
+	local open zone http_port https_port
+	open="$(uci -q get nginx_proxy.main.open_firewall)"
+	zone="$(uci -q get nginx_proxy.main.firewall_zone)"
+	http_port="$(uci -q get nginx_proxy.main.management_http_port)"
+	https_port="$(uci -q get nginx_proxy.main.management_https_port)"
+	[ -n "$zone" ] || zone=wan
+	[ -n "$http_port" ] || http_port=80
+	[ -n "$https_port" ] || https_port=443
+
+	delete_firewall_rules
+	if [ "$open" = 1 ]; then
+		uci -q set firewall.nginx_proxy_http='rule'
+		uci -q set firewall.nginx_proxy_http.name='nginx-proxy HTTP'
+		uci -q set firewall.nginx_proxy_http.src="$zone"
+		uci -q set firewall.nginx_proxy_http.proto='tcp'
+		uci -q set firewall.nginx_proxy_http.dest_port="$http_port"
+		uci -q set firewall.nginx_proxy_http.target='ACCEPT'
+		uci -q set firewall.nginx_proxy_https='rule'
+		uci -q set firewall.nginx_proxy_https.name='nginx-proxy HTTPS'
+		uci -q set firewall.nginx_proxy_https.src="$zone"
+		uci -q set firewall.nginx_proxy_https.proto='tcp'
+		uci -q set firewall.nginx_proxy_https.dest_port="$https_port"
+		uci -q set firewall.nginx_proxy_https.target='ACCEPT'
+	fi
+	uci -q commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+}
+
+disable_proxy() {
+	/etc/init.d/nginx-proxy stop >/dev/null 2>&1 || true
+	/etc/init.d/nginx-proxy disable >/dev/null 2>&1 || true
+	delete_firewall_rules
+	uci -q commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	restore_uhttpd || {
+		log 'failed to restore uhttpd configuration'
+		return 1
+	}
+	log 'disabled'
+}
+
+rollback_enable() {
+	/etc/init.d/nginx-proxy stop >/dev/null 2>&1 || true
+	/etc/init.d/nginx-proxy disable >/dev/null 2>&1 || true
+	delete_firewall_rules
+	uci -q commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	restore_uhttpd || true
+}
+
+enable_proxy() {
+	local candidate="$CONFIG_FILE.apply"
+
+	mkdir -p /var/etc /var/lib/nginx-proxy /var/log/nginx-proxy
+	"$GENERATOR" "$candidate" || return 1
+	/usr/sbin/nginx -t -q -c "$candidate" || {
+		rm -f "$candidate"
+		return 1
+	}
+
+	/etc/init.d/nginx stop >/dev/null 2>&1 || true
+	/etc/init.d/nginx disable >/dev/null 2>&1 || true
+	take_over_uhttpd || {
+		restore_uhttpd || true
+		rm -f "$candidate"
+		return 1
+	}
+	mv "$candidate" "$CONFIG_FILE"
+	sync_firewall
+	/etc/init.d/nginx-proxy enable
+	/etc/init.d/nginx-proxy restart || {
+		rollback_enable
+		return 1
+	}
+	sleep 1
+	/etc/init.d/nginx-proxy running || {
+		rollback_enable
+		log 'nginx did not stay running; uhttpd was restored'
+		return 1
+	}
+	log 'enabled'
+}
+
+case "$1" in
+	disable) disable_proxy ;;
+	apply)
+		if enabled; then
+			enable_proxy
+		else
+			disable_proxy
+		fi
+		;;
+	*) echo "Usage: $0 [apply|disable]" >&2; exit 2 ;;
+esac

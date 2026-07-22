@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# This package runs nginx with an isolated configuration.
+/etc/init.d/nginx stop >/dev/null 2>&1 || true
+/etc/init.d/nginx disable >/dev/null 2>&1 || true
+
+exit 0

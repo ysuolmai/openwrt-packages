@@ -1,0 +1,27 @@
+{
+	"luci-app-nginx": {
+		"description": "Grant access to the nginx reverse proxy manager",
+		"read": {
+			"file": {
+				"/etc/luci-uploads": [ "read" ],
+				"/etc/luci-uploads/*": [ "read" ]
+			},
+			"uci": [ "nginx_proxy", "network" ],
+			"ubus": {
+				"luci.nginx-proxy": [ "status", "check" ],
+				"network.interface": [ "dump" ],
+				"service": [ "list" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/etc/luci-uploads/*": [ "write" ]
+			},
+			"uci": [ "nginx_proxy" ],
+			"ubus": {
+				"luci.nginx-proxy": [ "apply" ],
+				"uci": [ "apply" ]
+			}
+		}
+	}
+}

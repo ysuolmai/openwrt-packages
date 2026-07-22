@@ -1,0 +1,77 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Nginx Proxy"
+msgstr "Nginx 反向代理"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "LuCI management networks"
+msgstr "允许访问 LuCI 的网络"
+
+msgid "HTTP port"
+msgstr "HTTP 端口"
+
+msgid "HTTPS access to LuCI"
+msgstr "通过 HTTPS 访问 LuCI"
+
+msgid "HTTPS port"
+msgstr "HTTPS 端口"
+
+msgid "LuCI certificate (PEM)"
+msgstr "LuCI 证书文件（PEM）"
+
+msgid "LuCI private key (KEY/PEM)"
+msgstr "LuCI 私钥文件（KEY/PEM）"
+
+msgid "Allow HTTP/HTTPS from WAN"
+msgstr "允许从 WAN 访问 HTTP/HTTPS"
+
+msgid "WAN firewall zone"
+msgstr "WAN 防火墙区域"
+
+msgid "HTTPS reverse proxies"
+msgstr "HTTPS 反向代理"
+
+msgid "Domain"
+msgstr "域名"
+
+msgid "Backend protocol"
+msgstr "后端协议"
+
+msgid "Backend address"
+msgstr "后端地址"
+
+msgid "Backend port"
+msgstr "后端端口"
+
+msgid "Certificate (PEM)"
+msgstr "证书文件（PEM）"
+
+msgid "Private key (KEY/PEM)"
+msgstr "私钥文件（KEY/PEM）"
+
+msgid "Verify backend certificate"
+msgstr "验证后端证书"
+
+msgid "Enter one valid domain name, optionally beginning with *."
+msgstr "请输入一个有效域名，可以使用 *. 开头的通配域名。"
+
+msgid "Unable to apply nginx configuration"
+msgstr "无法应用 nginx 配置"
+
+msgid "Nginx configuration applied"
+msgstr "Nginx 配置已应用"

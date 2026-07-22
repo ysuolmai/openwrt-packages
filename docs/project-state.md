@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-20
+Last updated: 2026-07-22
 
 ## Purpose
 
@@ -23,6 +23,7 @@ The collection currently owns:
 - `luci-app-homeproxy`
 - `moontvplus`
 - `luci-app-moontvplus`
+- `luci-app-nginx`
 
 The FRPC and FRPS service switches are shown under Common Settings while still
 writing the `init.enabled` UCI option used by their init scripts. DDNS-Go
@@ -32,6 +33,28 @@ service section so its LuCI enable switch controls startup correctly.
 Detailed upstream commits and local changes are stored in `upstreams.json`.
 The standalone `ysuolmai` repositories remain available as history but are no
 longer the package source used by CI.
+
+`luci-app-nginx` is a lightweight HTTPS reverse-proxy manager. Its isolated
+nginx instance owns the public HTTP/HTTPS listeners while uhttpd remains
+available only on loopback port 8080. Requests using the router IP are proxied
+to LuCI only for explicitly selected management networks; named virtual hosts
+proxy to configured internal services, and unmatched WAN requests are
+rejected. Activation validates the generated nginx configuration before
+changing uhttpd and restores the previous uhttpd configuration if nginx fails
+to start.
+
+Version `1.0.0-r1` was built for `aarch64_cortex-a53` and tested on
+`172.28.1.225`. IP-based HTTP and HTTPS management, HTTP-to-HTTPS redirects,
+named HTTPS virtual hosts, disable/restore, and subsequent re-enable all
+worked. The temporary test virtual host and self-signed certificate were
+removed afterward. The test device remains enabled with `lan` and `wan` as
+management networks, nginx on port 80, and uhttpd on loopback port 8080.
+
+The package feeds configured on `172.28.1.225` do not match that firmware's
+libubus/libubox ABI package names. The nginx binary itself does not link those
+libraries, but nginx-ssl's standard packaging depends on nginx-ssl-util, which
+does. Do not install nginx dependency IPKs from an unrelated snapshot on other
+routers; firmware builds and matching package feeds resolve this normally.
 
 ## HomeProxy decision
 

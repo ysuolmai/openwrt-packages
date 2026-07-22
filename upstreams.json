@@ -260,6 +260,26 @@
         "Provide native JavaScript LuCI configuration, service control, core management and log viewing",
         "Map UCI settings to the MoonTVPlus environment through a narrow rpcd interface"
       ]
+    },
+    {
+      "name": "luci-app-nginx",
+      "path": "luci-app-nginx",
+      "upstreams": [
+        {
+          "role": "application-core",
+          "repository": "https://github.com/nginx/nginx",
+          "branch": "master",
+          "path": "",
+          "commit": null,
+          "tracking": "OpenWrt nginx-ssl package"
+        }
+      ],
+      "sync_strategy": "self-maintained",
+      "local_changes": [
+        "Run an isolated nginx configuration for HTTPS reverse proxies",
+        "Keep uhttpd on loopback and proxy trusted IP-based LuCI access",
+        "Reject unmatched WAN virtual hosts and restore uhttpd if activation fails"
+      ]
     }
   ]
 }

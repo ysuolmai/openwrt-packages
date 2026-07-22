@@ -1,0 +1,48 @@
+#!/usr/bin/ucode
+
+'use strict';
+
+import { popen } from 'fs';
+
+function run(command) {
+	let pipe = popen(command + ' 2>&1');
+	if (!pipe)
+		return { status: 127, output: 'unable to execute command' };
+	let output = pipe.read('all') ?? '';
+	let status = pipe.close();
+	return { status: status, output: output };
+}
+
+const methods = {
+	status: {
+		call: function() {
+			let running = run('/etc/init.d/nginx-proxy running').status === 0;
+			let enabled = trim(run('uci -q get nginx_proxy.main.enabled').output) === '1';
+			return { running: running, enabled: enabled };
+		}
+	},
+
+	apply: {
+		call: function() {
+			let result = run('/usr/libexec/nginx-proxy-apply apply');
+			return {
+				success: result.status === 0,
+				error: result.status === 0 ? null : trim(result.output),
+				output: trim(result.output)
+			};
+		}
+	},
+
+	check: {
+		call: function() {
+			let result = run('/usr/libexec/nginx-proxy-generate /var/etc/nginx-proxy.check && /usr/sbin/nginx -t -q -c /var/etc/nginx-proxy.check');
+			run('/bin/rm -f /var/etc/nginx-proxy.check');
+			return {
+				success: result.status === 0,
+				error: result.status === 0 ? null : trim(result.output)
+			};
+		}
+	}
+};
+
+return { 'luci.nginx-proxy': methods };
