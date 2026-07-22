@@ -101,7 +101,8 @@ rollback_enable() {
 enable_proxy() {
 	local candidate="$CONFIG_FILE.apply"
 
-	mkdir -p /var/etc /var/lib/nginx-proxy /var/log/nginx-proxy
+	mkdir -p /var/etc /var/lib/nginx /var/lib/nginx-proxy \
+		/var/log/nginx /var/log/nginx-proxy
 	"$GENERATOR" "$candidate" || return 1
 	/usr/sbin/nginx -t -q -c "$candidate" || {
 		rm -f "$candidate"

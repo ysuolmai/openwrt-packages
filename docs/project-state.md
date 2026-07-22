@@ -56,6 +56,12 @@ libraries, but nginx-ssl's standard packaging depends on nginx-ssl-util, which
 does. Do not install nginx dependency IPKs from an unrelated snapshot on other
 routers; firmware builds and matching package feeds resolve this normally.
 
+The r2 service creates nginx's standard runtime and log directories before
+running `nginx -t`. This is required on clean firmware installations where
+the stock nginx service has never initialized `/var/lib/nginx`. The fix was
+installed and verified on `172.28.1.1` with nginx 1.30.3: nginx owns port 80,
+uhttpd listens only on loopback port 8080, and IP-based LuCI access works.
+
 ## HomeProxy decision
 
 HomeProxy uses the VIKINGYFY implementation rather than the previous

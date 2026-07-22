@@ -10,7 +10,8 @@ GENERATOR=/usr/libexec/nginx-proxy-generate
 generate_config() {
 	local candidate="$CONFIG_FILE.new"
 
-	mkdir -p /var/etc /var/lib/nginx-proxy /var/log/nginx-proxy
+	mkdir -p /var/etc /var/lib/nginx /var/lib/nginx-proxy \
+		/var/log/nginx /var/log/nginx-proxy
 	"$GENERATOR" "$candidate" || return 1
 	/usr/sbin/nginx -t -q -c "$candidate" || return 1
 	mv "$candidate" "$CONFIG_FILE"
