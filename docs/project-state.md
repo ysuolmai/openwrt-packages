@@ -207,6 +207,27 @@ predictable `022` umask and repairs traversal permissions on the configured
 core parent so the unprivileged `nobody` service can execute a freshly
 downloaded runtime.
 
+## Docker native nftables
+
+`dockerd` is maintained locally from `kenzok8/jell` and defaults Docker 29 or
+later to `firewall_backend=nftables`. The generated daemon configuration keeps
+Docker firewall management enabled, removes runtime iptables package
+dependencies, and installs an explicit fw4 `docker` to `wan` forwarding so
+fw4 does not reject traffic accepted by Docker's independent nft base chains.
+
+`luci-app-dockerman` is maintained from `lisaac/luci-app-dockerman`. Its access
+control uses a validated `inet dockerman` table instead of `DOCKER-USER` and
+only invokes iptables once when an old `DOCKER-USER` chain actually exists.
+OpenWRT-CI removes the jell `dockerd` and separately cloned Dockerman copies
+before importing this collection.
+
+The migration was tested on `172.28.1.225`: container DNS and HTTP egress,
+published-port DNAT, LAN/external access control, malformed UCI rejection, and
+service/firewall restart behavior passed. The final ruleset contained only
+`fw4`, `dnsmasq`, `docker-bridges`, and `dockerman` tables, with no iptables
+append rules. The test container and image were removed; the router keeps its
+rollback backup under `/root/codex-docker-nft-backup-20260723`.
+
 ## Build verification
 
 The remote ImmortalWrt IPQ60xx build verified these packages successfully:

@@ -268,6 +268,47 @@
       ]
     },
     {
+      "name": "dockerd",
+      "path": "dockerd",
+      "upstreams": [
+        {
+          "role": "openwrt-packaging",
+          "repository": "https://github.com/kenzok8/jell",
+          "branch": "main",
+          "path": "dockerd",
+          "commit": "461ac616c45859d3a75b22e4738c21d0d3d5414f"
+        }
+      ],
+      "sync_strategy": "mirror-with-local-patches",
+      "local_changes": [
+        "Default Docker 29 and later to its native nftables firewall backend",
+        "Generate the firewall backend from UCI with strict fallback validation",
+        "Create the fw4 docker-to-wan forwarding required for container egress",
+        "Expose the existing Docker storage-driver setting through UCI",
+        "Remove runtime dependencies on iptables compatibility packages",
+        "Pin the Docker release commit so the package also builds outside jell"
+      ]
+    },
+    {
+      "name": "luci-app-dockerman",
+      "path": "luci-app-dockerman",
+      "upstreams": [
+        {
+          "role": "primary-upstream",
+          "repository": "https://github.com/lisaac/luci-app-dockerman",
+          "branch": "master",
+          "path": "applications/luci-app-dockerman",
+          "commit": "6c5cd4d471884430e8f9fa7ec8bb048e53f3abed"
+        }
+      ],
+      "sync_strategy": "mirror-with-local-patches",
+      "local_changes": [
+        "Replace DOCKER-USER iptables rules with a validated native nftables table",
+        "Remove stale Docker compatibility chains during migration",
+        "Preserve interface and published-port access controls without command injection"
+      ]
+    },
+    {
       "name": "tailscale",
       "path": "tailscale",
       "upstreams": [

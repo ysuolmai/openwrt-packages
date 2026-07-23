@@ -1,0 +1,182 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+# PROCD_DEBUG=1
+config_load 'dockerd'
+# config_get daemon_ea "dockerman" daemon_ea
+_DOCKERD=/etc/init.d/dockerd
+
+docker_running(){
+	docker version > /dev/null 2>&1
+	return $?
+}
+
+add_ports() {
+	[ $# -eq 0 ] && return
+	$($_DOCKERD running) && docker_running || return 1
+	ids=$@
+	for id in $ids; do
+		id=$(docker ps --filter "ID=$id" --quiet)
+		[ -z "$id" ] && {
+				 echo "Docker containner not running";
+			 return 1;
+		}
+		ports=$(docker ps --filter "ID=$id" --format "{{.Ports}}")
+		# echo "$ports"
+		for port in $ports; do
+				echo "$port" | grep -qE "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:.*$" || continue;
+				case "$port" in *,) port="${port%,}" ;; esac
+				local protocol=""
+				[ "${port%tcp}" != "$port" ] && protocol="/tcp"
+				[ "${port%udp}" != "$port" ] && protocol="/udp"
+				[ -z "$protocol" ] && continue
+				port="${port%%->*}"
+				port="${port##*:}"
+				uci_add_list dockerd dockerman ac_allowed_ports "${port}${protocol}"
+		done
+	done
+	uci_commit dockerd
+}
+
+
+convert() {
+	_convert() {
+		_id=$1
+		_id=$(docker ps --all --filter "ID=$_id" --quiet)
+		if [ -z "$_id" ]; then
+			uci_remove_list dockerd dockerman ac_allowed_container "$1"
+			return
+		fi
+		if /etc/init.d/dockerman add_ports "$_id"; then
+			uci_remove_list dockerd dockerman ac_allowed_container "$_id"
+		fi
+	}
+	config_list_foreach dockerman ac_allowed_container _convert
+	uci_commit dockerd
+}
+
+NFT_FAMILY="inet"
+NFT_TABLE="dockerman"
+NFT_RULES="/tmp/dockerman.nft"
+
+valid_interface() {
+	case "$1" in
+		''|*[!A-Za-z0-9_.:@+-]*) return 1 ;;
+	esac
+}
+
+valid_port() {
+	case "$1" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ "$1" -ge 1 ] && [ "$1" -le 65535 ]
+}
+
+add_allowed_interface(){
+	valid_interface "$1" || {
+		logger -t dockerman -p err "Ignoring invalid interface name '$1'"
+		return
+	}
+	printf '\t\tiifname "%s" oifname "docker0" counter accept\n' "$1"
+}
+
+add_allowed_ports(){
+	local value="$1" protocol port
+	case "$value" in
+		*/tcp) protocol="tcp"; port="${value%/tcp}" ;;
+		*/udp) protocol="udp"; port="${value%/udp}" ;;
+		*) return ;;
+	esac
+	valid_port "$port" || {
+		logger -t dockerman -p err "Ignoring invalid allowed port '$value'"
+		return
+	}
+	printf '\t\toifname "docker0" meta l4proto %s ct original proto-dst %s counter accept\n' \
+		"$protocol" "$port"
+}
+
+handle_allowed_ports(){
+	config_list_foreach "dockerman" "ac_allowed_ports" add_allowed_ports
+}
+
+cleanup_legacy_rules(){
+	nft list chain ip filter DOCKER-USER >/dev/null 2>&1 || return 0
+	command -v iptables >/dev/null 2>&1 || return 0
+	iptables -D FORWARD -j DOCKER-USER >/dev/null 2>&1
+	iptables -D DOCKER-USER -j DOCKER-MAN >/dev/null 2>&1
+	iptables -F DOCKER-MAN >/dev/null 2>&1
+	iptables -X DOCKER-MAN >/dev/null 2>&1
+	iptables -F DOCKER-USER >/dev/null 2>&1
+	iptables -X DOCKER-USER >/dev/null 2>&1
+}
+
+delete_dockerman_table(){
+	nft delete table "$NFT_FAMILY" "$NFT_TABLE" >/dev/null 2>&1
+}
+
+install_dockerman_table(){
+	local candidate="${NFT_RULES}.new"
+	umask 077
+	{
+		printf 'table %s %s {\n' "$NFT_FAMILY" "$NFT_TABLE"
+		printf '\tchain forward {\n'
+		printf '\t\ttype filter hook forward priority -1; policy accept;\n'
+		config_list_foreach "dockerman" "ac_allowed_interface" add_allowed_interface
+		handle_allowed_ports
+		printf '\t\toifname "docker0" ct state { established, related } counter accept\n'
+		printf '\t\toifname "docker0" ct state { invalid, new } counter drop\n'
+		printf '\t}\n}\n'
+	} > "$candidate"
+
+	if ! nft --check --file "$candidate"; then
+		logger -t dockerman -p err "Generated nftables rules are invalid"
+		rm -f "$candidate"
+		return 1
+	fi
+
+	delete_dockerman_table
+	if nft --file "$candidate"; then
+		mv "$candidate" "$NFT_RULES"
+		return 0
+	fi
+
+	logger -t dockerman -p err "Unable to install nftables access rules"
+	rm -f "$candidate"
+	return 1
+}
+
+start_service(){
+	local firewall_backend
+	[ -x "$_DOCKERD" ] && $($_DOCKERD enabled) || return 0
+	$($_DOCKERD running) && docker_running || return 0
+	config_get firewall_backend globals firewall_backend "nftables"
+	[ "$firewall_backend" = "nftables" ] || {
+		logger -t dockerman -p notice \
+			"Native access rules are disabled for firewall backend '$firewall_backend'"
+		return 0
+	}
+	cleanup_legacy_rules
+	install_dockerman_table
+}
+
+stop_service(){
+	delete_dockerman_table
+	rm -f "$NFT_RULES" "${NFT_RULES}.new"
+}
+
+service_triggers() {
+	procd_add_reload_trigger 'dockerd'
+}
+
+reload_service() {
+	start
+}
+
+boot() {
+	sleep 5s
+	start
+}
+
+extra_command "add_ports" "Add allowed ports based on the container ID(s)"
+extra_command "convert" "Convert Ac allowed container to AC allowed ports"
