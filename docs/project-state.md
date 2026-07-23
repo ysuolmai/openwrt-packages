@@ -140,9 +140,14 @@ manager at the top of both pages. The official binaries retain the embedded
 FRPS Dashboard, while the two procd services keep independent UCI and TOML
 configurations and can run concurrently.
 
-The merged `frp_1.0.0-r1_all.ipk` and `luci-app-frp` IPK were built and
-verified together by GitHub Actions run `29928490032`. The lightweight package
-build no longer invokes the Go or Node.js toolchains.
+The merged `frp_1.0.0-r2` and `luci-app-frp_2026.07.21-r3` IPKs were built on
+the remote IPQ60xx buildroot. They were installed on `172.28.1.225` with the
+official `frpc` and `frps` 0.70.0 cores; both services ran concurrently, the
+client registered its test proxy with the local server, and both were then
+restored to disabled. The LuCI forms serialize duplicate theme save handlers,
+preventing a cleared field from issuing the same UCI delete twice and failing
+the second request with ubus code 4. The lightweight package build does not
+invoke the Go or Node.js toolchains.
 
 The local delta is intentionally narrow:
 

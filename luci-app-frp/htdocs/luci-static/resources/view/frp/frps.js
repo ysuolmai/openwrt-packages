@@ -5,6 +5,7 @@
 'require uci';
 'require tools.widgets as widgets';
 'require view.frp.core as coreView';
+'require view.frp.save as saveGuard';
 
 //	[Widget, Option, Title, Description, {Param: 'Value'}],
 const startupConf = [
@@ -128,6 +129,7 @@ return view.extend({
 		let m, s, o, ss;
 
 		m = new form.Map('frps', _('frp Server'));
+		saveGuard.guard(m);
 
 		s = m.section(form.NamedSection, '_status');
 		s.anonymous = true;
