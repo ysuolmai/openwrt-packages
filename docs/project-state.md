@@ -23,6 +23,8 @@ The collection currently owns:
 - `moontvplus`
 - `luci-app-moontvplus`
 - `luci-app-nginx`
+- `tailscale`
+- `luci-app-tailscale-community`
 
 The FRPC and FRPS service switches are shown under Common Settings and write
 the `common.enabled` UCI option used by their init scripts. DDNS-Go
@@ -32,6 +34,20 @@ service section so its LuCI enable switch controls startup correctly.
 Detailed upstream commits and local changes are stored in `upstreams.json`.
 The standalone `ysuolmai` repositories remain available as history but are no
 longer the package source used by CI.
+
+Tailscale uses the size-optimized `GuNanOvO/openwrt-tailscale` package paired
+with `Tokisaki-Galaxy/luci-app-tailscale-community`. The standard package name,
+init script, UCI configuration, state path, and command paths are retained, so
+existing daemon state survives the replacement. CI consumers must remove feed
+and third-party copies of both the core and old `luci-app-tailscale` before
+installing this collection.
+The Community LuCI package migrates the old asvow `enabled`, `accept_dns`,
+`config_path`, and `disable_snat_subnet_routes` options to the new service,
+DNS, state-file, and SNAT fields during installation.
+The IPQ60xx remote build verified `tailscale_1.98.9-r1`,
+`luci-app-tailscale-community_4.2.1-r2`, and the Simplified Chinese translation
+with the official OpenWrt Go 1.26.5 recipe. The package workflow refreshes Go
+only for Tailscale jobs and uses the shared toolchain cache afterward.
 
 `luci-app-nginx` is a lightweight HTTPS reverse-proxy manager. Its isolated
 nginx instance owns the public HTTP/HTTPS listeners while uhttpd remains

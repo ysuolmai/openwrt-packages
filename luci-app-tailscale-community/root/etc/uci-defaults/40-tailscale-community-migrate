@@ -1,0 +1,45 @@
+#!/bin/sh
+
+section=tailscale.settings
+changed=0
+
+set_if_missing() {
+	local option="$1" value="$2"
+	[ -z "$(uci -q get "$section.$option")" ] || return 0
+	uci -q set "$section.$option=$value"
+	changed=1
+}
+
+enabled="$(uci -q get "$section.service_enabled")"
+if [ -z "$enabled" ]; then
+	enabled="$(uci -q get "$section.enabled")"
+	case "$enabled" in 0|1) ;; *) enabled=1;; esac
+	uci -q set "$section.service_enabled=$enabled"
+	changed=1
+fi
+
+if [ -z "$(uci -q get "$section.dns_mode")" ]; then
+	accept_dns="$(uci -q get "$section.accept_dns")"
+	disable_magic_dns="$(uci -q get "$section.disable_magic_dns")"
+	if [ "$accept_dns" = 1 ]; then
+		dns_mode=magicdns
+	elif [ "$accept_dns" = 0 ] || [ "$disable_magic_dns" = 1 ]; then
+		dns_mode=disabled
+	elif [ "$disable_magic_dns" = 0 ]; then
+		dns_mode=magicdns
+	else
+		dns_mode=disabled
+	fi
+	uci -q set "$section.dns_mode=$dns_mode"
+	changed=1
+fi
+
+config_path="$(uci -q get "$section.config_path")"
+[ -z "$config_path" ] || set_if_missing state_file "$config_path/tailscaled.state"
+
+disable_snat="$(uci -q get "$section.disable_snat_subnet_routes")"
+case "$disable_snat" in 0|1) set_if_missing nosnat "$disable_snat";; esac
+
+[ "$changed" -eq 0 ] || uci -q commit tailscale
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
+exit 0

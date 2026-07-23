@@ -266,6 +266,44 @@
         "Reject unmatched WAN virtual hosts and restore uhttpd if activation fails",
         "Validate one PEM and one KEY upload per site and store them under stable unique identifiers"
       ]
+    },
+    {
+      "name": "tailscale",
+      "path": "tailscale",
+      "upstreams": [
+        {
+          "role": "openwrt-packaging",
+          "repository": "https://github.com/GuNanOvO/openwrt-tailscale",
+          "branch": "main",
+          "path": "package/tailscale",
+          "commit": "9ef3e04288cdfe96a6041ebc09bdf3d4f92cd32c"
+        }
+      ],
+      "sync_strategy": "mirror-with-local-patches",
+      "local_changes": [
+        "Do not copy an unpackaged tailscaled binary into the package output directory",
+        "Honor both the community service switch and the legacy enabled option in procd",
+        "Apply the community low-memory setting to tailscaled",
+        "Use the configured Go module mirror with direct fallback for reliable builds"
+      ]
+    },
+    {
+      "name": "luci-app-tailscale-community",
+      "path": "luci-app-tailscale-community",
+      "upstreams": [
+        {
+          "role": "primary-upstream",
+          "repository": "https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community",
+          "branch": "master",
+          "path": "luci-app-tailscale-community",
+          "commit": "f6fbeb749a989b6e7aa6fc33fddc6e3f6faaf392"
+        }
+      ],
+      "sync_strategy": "mirror-with-local-patches",
+      "local_changes": [
+        "Migrate the old asvow enabled, DNS, state-directory and SNAT options into the community UCI model",
+        "Apply the configured service state during boot"
+      ]
     }
   ]
 }

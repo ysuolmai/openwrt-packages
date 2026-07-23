@@ -22,6 +22,8 @@ on:
           - luci-app-homeproxy
           - moontvplus
           - luci-app-moontvplus
+          - tailscale
+          - luci-app-tailscale-community
       format:
         description: Package format to build
         required: true
@@ -44,7 +46,7 @@ env:
   COLLECTION_PATHS: >-
     frp luci-app-frp ddns-go luci-app-ddns-go
     luci-app-adguardhome luci-theme-shadcn sing-box luci-app-homeproxy
-    moontvplus luci-app-moontvplus
+    moontvplus luci-app-moontvplus tailscale luci-app-tailscale-community
   SELECTED_PACKAGE: ${{ inputs.package || 'all' }}
   BUILD_FORMAT: ${{ inputs.format || 'ipk' }}
 
@@ -53,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ (inputs.package || 'all') == 'all' && fromJSON('["frp","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+        package: ${{ (inputs.package || 'all') == 'all' && fromJSON('["frp","ddns-go","luci-app-ddns-go","luci-app-adguardhome","luci-theme-shadcn","sing-box","luci-app-homeproxy","moontvplus","luci-app-moontvplus","tailscale"]') || fromJSON(format('["{0}"]', inputs.package)) }}
         format: ${{ (inputs.format || 'ipk') == 'both' && fromJSON('["ipk","apk"]') || fromJSON(format('["{0}"]', inputs.format || 'ipk')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 350
@@ -71,15 +73,21 @@ jobs:
               build_paths="$COLLECTION_PATHS"
               expected_packages="frp luci-app-frp ddns-go \
                 luci-app-ddns-go luci-app-adguardhome luci-theme-shadcn sing-box \
-                luci-app-homeproxy moontvplus luci-app-moontvplus"
+                luci-app-homeproxy moontvplus luci-app-moontvplus tailscale \
+                luci-app-tailscale-community"
               ;;
             frp)
               build_paths="frp luci-app-frp"
               expected_packages="frp luci-app-frp"
               ;;
+            tailscale)
+              build_paths="tailscale luci-app-tailscale-community"
+              expected_packages="tailscale luci-app-tailscale-community"
+              ;;
             luci-app-frp|ddns-go|luci-app-ddns-go|\
             luci-app-adguardhome|luci-theme-shadcn|sing-box|\
-            luci-app-homeproxy|moontvplus|luci-app-moontvplus)
+            luci-app-homeproxy|moontvplus|luci-app-moontvplus|\
+            luci-app-tailscale-community)
               build_paths="$SELECTED_PACKAGE"
               expected_packages="$SELECTED_PACKAGE"
               ;;
@@ -134,6 +142,17 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Use current official Go toolchain
+        if: matrix.package == 'tailscale' || matrix.package == 'luci-app-tailscale-community'
+        run: |
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://github.com/openwrt/packages.git openwrt-packages
+          git -C openwrt-packages sparse-checkout set lang/golang
+          rm -rf wrt/feeds/packages/lang/golang wrt/package/feeds/packages/golang*
+          cp -a openwrt-packages/lang/golang wrt/feeds/packages/lang/golang
+          cd wrt
+          ./scripts/feeds install -f golang golang1.26
+
       - name: Remove conflicting packages and add this collection
         run: |
           for package in $COLLECTION_PATHS; do
@@ -168,6 +187,8 @@ jobs:
           CONFIG_PACKAGE_luci-app-homeproxy=y
           CONFIG_PACKAGE_moontvplus=y
           CONFIG_PACKAGE_luci-app-moontvplus=y
+          CONFIG_PACKAGE_tailscale=y
+          CONFIG_PACKAGE_luci-app-tailscale-community=y
           CONFIG_USE_APK=n
           EOF
           make defconfig
