@@ -266,3 +266,9 @@ Uploaded certificates and the saved uhttpd configuration are listed for
 sysupgrade preservation. If nginx configuration generation fails during boot,
 the service disables the proxy and restores direct LuCI HTTP access instead of
 leaving uhttpd reachable only through its loopback listener.
+
+FRPC, FRPS, AdGuard Home, and MoonTVPlus automatically download their verified
+official core when the corresponding service is enabled but its executable is
+missing. Disabled services make no download request. FRPC and FRPS share their
+existing updater lock and install both official binaries together; MoonTVPlus
+installs its core and optional font in the same operation.

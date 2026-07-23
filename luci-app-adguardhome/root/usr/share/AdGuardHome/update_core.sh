@@ -9,6 +9,7 @@ LOCK_DIR="$RUN_DIR/update.lock"
 WORK_DIR="$RUN_DIR/update.$$"
 LOG_TAG=adguardhome-update
 RESULT_FILE="$RUN_DIR/update.result"
+INSTALL_ONLY="${ADGUARDHOME_INSTALL_ONLY:-0}"
 
 mkdir -p "$RUN_DIR"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -127,19 +128,19 @@ backup="${binpath}.previous"
 cp "$candidate" "$new"
 chmod 755 "$new"
 
-/etc/init.d/AdGuardHome stop nobackup >/dev/null 2>&1 || true
+[ "$INSTALL_ONLY" = 1 ] || /etc/init.d/AdGuardHome stop nobackup >/dev/null 2>&1 || true
 if [ -e "$binpath" ]; then
 	rm -f "$backup"
 	mv "$binpath" "$backup"
 fi
 if ! mv "$new" "$binpath"; then
 	[ -e "$backup" ] && mv "$backup" "$binpath"
-	/etc/init.d/AdGuardHome start >/dev/null 2>&1 || true
+	[ "$INSTALL_ONLY" = 1 ] || /etc/init.d/AdGuardHome start >/dev/null 2>&1 || true
 	echo "Unable to install the downloaded executable."
 	exit 1
 fi
 
-if ! /etc/init.d/AdGuardHome start >/dev/null 2>&1; then
+if [ "$INSTALL_ONLY" != 1 ] && ! /etc/init.d/AdGuardHome start >/dev/null 2>&1; then
 	rm -f "$binpath"
 	[ -e "$backup" ] && mv "$backup" "$binpath"
 	/etc/init.d/AdGuardHome start >/dev/null 2>&1 || true

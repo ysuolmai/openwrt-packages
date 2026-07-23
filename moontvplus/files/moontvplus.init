@@ -59,8 +59,13 @@ start_service() {
 		chmod 0644 "$core_dir/shared/NotoSansCJK-Regular.ttc"
 	app_dir="$core_dir/current"
 	[ -f "$app_dir/.moontvplus-core" ] && [ -f "$app_dir/start.js" ] || {
-		logger -t moontvplus 'core is not installed; download it from LuCI first'
-		return 1
+		logger -t moontvplus 'core is not installed; downloading the core and optional font'
+		/usr/share/moontvplus/update_core.sh all || {
+			[ -f "$app_dir/.moontvplus-core" ] && [ -f "$app_dir/start.js" ] || {
+				logger -t moontvplus 'unable to download the core'
+				return 1
+			}
+		}
 	}
 	node_bin="$app_dir/node"
 	[ -x "$node_bin" ] || {

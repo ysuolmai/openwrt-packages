@@ -48,7 +48,12 @@ start_service() {
 	[ -n "$common_enabled" ] && enabled="$common_enabled"
 	[ "$enabled" -eq 1 ] || return 0
 
-	[ -x "$PROG" ] || { _err 'FRP core is not installed; download it from LuCI'; return 1; }
+	if [ ! -x "$PROG" ]; then
+		_err 'FRP core is not installed; downloading the latest official release'
+		/usr/libexec/frp-update-core || {
+			[ -x "$PROG" ] || { _err 'unable to download the FRP core'; return 1; }
+		}
+	fi
 	/usr/libexec/frp-generate "$NAME" "$conf_file" || return 1
 	[ -n "$conf_inc" ] && config_list_foreach "$init_cfg" conf_inc cat >> "$conf_file"
 

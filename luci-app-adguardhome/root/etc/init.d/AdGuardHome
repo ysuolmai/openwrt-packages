@@ -248,7 +248,12 @@ start_service() {
 		redirect_clear
 		return 0
 	fi
-	[ -x "$binpath" ] || { log "core executable not found: $binpath"; redirect_clear; return 1; }
+	if [ ! -x "$binpath" ]; then
+		log "core executable not found; downloading the latest release"
+		ADGUARDHOME_INSTALL_ONLY=1 /usr/share/AdGuardHome/update_core.sh || {
+			[ -x "$binpath" ] || { log "unable to download the core: $binpath"; redirect_clear; return 1; }
+		}
+	fi
 	mkdir -p "$workdir/data" "${binpath%/*}" "${configpath%/*}"
 	restore_backup
 	"$binpath" --version >"$RUN_DIR/version.tmp" 2>/dev/null || true
