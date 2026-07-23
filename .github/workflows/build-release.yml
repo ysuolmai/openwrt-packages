@@ -153,6 +153,33 @@ jobs:
           cd wrt
           ./scripts/feeds install -f golang golang1.26
 
+      - name: Restore current Go host cache
+        id: current-go-cache
+        if: matrix.package == 'tailscale' || matrix.package == 'luci-app-tailscale-community'
+        uses: actions/cache@v4
+        with:
+          key: ${{ env.OPENWRT_CONFIG }}-go-${{ hashFiles('wrt/feeds/packages/lang/golang/golang1.26/Makefile') }}
+          path: |
+            wrt/build_dir/hostpkg/go-*
+            wrt/staging_dir/hostpkg/lib/go-1.26
+            wrt/staging_dir/hostpkg/lib/go-cross
+            wrt/staging_dir/hostpkg/bin/go
+            wrt/staging_dir/hostpkg/bin/gofmt
+            wrt/staging_dir/host/bin/go
+            wrt/staging_dir/host/bin/gofmt
+            wrt/staging_dir/hostpkg/stamp/.golang*
+            wrt/staging_dir/hostpkg/packages/golang*
+            wrt/tmp/go-build
+            wrt/dl/go-mod-cache
+
+      - name: Build current Go host
+        if: (matrix.package == 'tailscale' || matrix.package == 'luci-app-tailscale-community') && steps.current-go-cache.outputs.cache-hit != 'true'
+        run: |
+          cd wrt
+          make package/feeds/packages/golang1.26/host/clean
+          make package/feeds/packages/golang1.26/host/compile -j"$(nproc)" || \
+            make package/feeds/packages/golang1.26/host/compile -j1 V=s
+
       - name: Remove conflicting packages and add this collection
         run: |
           for package in $COLLECTION_PATHS; do

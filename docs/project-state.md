@@ -47,7 +47,8 @@ DNS, state-file, and SNAT fields during installation.
 The IPQ60xx remote build verified `tailscale_1.98.9-r1`,
 `luci-app-tailscale-community_4.2.1-r2`, and the Simplified Chinese translation
 with the official OpenWrt Go 1.26.5 recipe. The package workflow refreshes Go
-only for Tailscale jobs and uses the shared toolchain cache afterward.
+only for Tailscale jobs and keeps its host compiler and module caches separate
+from the existing OpenWrt toolchain cache.
 
 `luci-app-nginx` is a lightweight HTTPS reverse-proxy manager. Its isolated
 nginx instance owns the public HTTP/HTTPS listeners while uhttpd remains
