@@ -178,6 +178,12 @@ development tooling, so no runtime theme files were imported.
   HomeProxy resource preloader is incompatible with the VIKINGYFY layout and
   must remain removed.
 
+Tailscale was switched from `asvow/luci-app-tailscale` and the feed core to the
+collection's optimized core and Community LuCI in `OpenWRT-CI` commit
+`af98db9`, `openwrt-ci2` commit `778eb44`, and `CloseWRT-CI` commit `e1236a4`.
+The Amlogic firmware repository was not changed because all three of its source
+configurations explicitly leave Tailscale disabled.
+
 Do not let later `jell` imports overwrite `frp`, DDNS-Go, or their LuCI apps.
 The VIKINGYFY package bundle and standard feeds may contain other HomeProxy or
 sing-box copies; conflict cleanup before cloning this collection must remove
