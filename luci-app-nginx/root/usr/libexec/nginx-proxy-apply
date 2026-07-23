@@ -34,9 +34,25 @@ take_over_uhttpd() {
 }
 
 restore_uhttpd() {
-	[ -s "$UHTTPD_BACKUP" ] || return 0
-	uci -q revert uhttpd
-	uci -q import uhttpd < "$UHTTPD_BACKUP" || return 1
+	local listeners port
+
+	if [ -s "$UHTTPD_BACKUP" ]; then
+		uci -q revert uhttpd
+		uci -q import uhttpd < "$UHTTPD_BACKUP" || return 1
+	else
+		listeners="$(uci -q get uhttpd.main.listen_http)"
+		case "$listeners" in
+			*127.0.0.1:8080*) ;;
+			*) return 0 ;;
+		esac
+		port="$(uci -q get nginx_proxy.main.management_http_port)"
+		[ -n "$port" ] || port=80
+		uci -q delete uhttpd.main.listen_http
+		uci -q delete uhttpd.main.listen_https
+		uci -q add_list uhttpd.main.listen_http="0.0.0.0:$port"
+		uci -q add_list uhttpd.main.listen_http="[::]:$port"
+		uci -q set uhttpd.main.redirect_https=0
+	fi
 	uci -q commit uhttpd
 	/etc/init.d/uhttpd restart
 	rm -f "$UHTTPD_BACKUP"

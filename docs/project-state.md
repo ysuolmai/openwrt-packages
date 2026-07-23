@@ -262,3 +262,7 @@ The lightweight nginx proxy leaves request body size unlimited and streams
 uploads directly to its upstream. This avoids rejecting firmware images over
 128 MiB or buffering them in nginx temporary storage before LuCI/uhttpd can
 process them; client-body and upstream proxy timeouts are one hour.
+Uploaded certificates and the saved uhttpd configuration are listed for
+sysupgrade preservation. If nginx configuration generation fails during boot,
+the service disables the proxy and restores direct LuCI HTTP access instead of
+leaving uhttpd reachable only through its loopback listener.
