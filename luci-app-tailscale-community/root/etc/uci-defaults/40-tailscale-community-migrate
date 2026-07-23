@@ -13,7 +13,7 @@ set_if_missing() {
 enabled="$(uci -q get "$section.service_enabled")"
 if [ -z "$enabled" ]; then
 	enabled="$(uci -q get "$section.enabled")"
-	case "$enabled" in 0|1) ;; *) enabled=1;; esac
+	case "$enabled" in 0|1) ;; *) enabled=0;; esac
 	uci -q set "$section.service_enabled=$enabled"
 	changed=1
 fi

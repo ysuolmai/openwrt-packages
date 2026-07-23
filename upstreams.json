@@ -323,7 +323,7 @@
       "sync_strategy": "mirror-with-local-patches",
       "local_changes": [
         "Do not copy an unpackaged tailscaled binary into the package output directory",
-        "Honor both the community service switch and the legacy enabled option in procd",
+        "Honor both the community service switch and the legacy enabled option in procd, defaulting unconfigured services to disabled",
         "Apply the community low-memory setting to tailscaled",
         "Use the configured Go module mirror with direct fallback for reliable builds"
       ]
@@ -342,7 +342,7 @@
       ],
       "sync_strategy": "mirror-with-local-patches",
       "local_changes": [
-        "Migrate the old asvow enabled, DNS, state-directory and SNAT options into the community UCI model",
+        "Migrate the old asvow enabled, DNS, state-directory and SNAT options into the community UCI model without enabling unconfigured services",
         "Apply the configured service state during boot"
       ]
     }

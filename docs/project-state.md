@@ -44,11 +44,14 @@ installing this collection.
 The Community LuCI package migrates the old asvow `enabled`, `accept_dns`,
 `config_path`, and `disable_snat_subnet_routes` options to the new service,
 DNS, state-file, and SNAT fields during installation.
-The IPQ60xx remote build verified `tailscale_1.98.9-r1`,
-`luci-app-tailscale-community_4.2.1-r2`, and the Simplified Chinese translation
+The IPQ60xx remote build verified `tailscale_1.98.9-r2`,
+`luci-app-tailscale-community_4.2.1-r3`, and the Simplified Chinese translation
 with the official OpenWrt Go 1.26.5 recipe. The package workflow refreshes Go
 only for Tailscale jobs and keeps its host compiler and module caches separate
 from the existing OpenWrt toolchain cache.
+The replacement was installed on `172.28.1.225`; legacy disabled, DNS, and
+state-directory options migrated correctly. A controlled enable/start and
+disable/stop test verified procd operation while leaving the router disabled.
 
 `luci-app-nginx` is a lightweight HTTPS reverse-proxy manager. Its isolated
 nginx instance owns the public HTTP/HTTPS listeners while uhttpd remains
