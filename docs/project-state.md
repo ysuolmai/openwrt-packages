@@ -115,9 +115,10 @@ The lightweight `frp` package resolves the latest stable release from
 the upstream GitHub API at runtime, maps the router architecture to the
 matching official Linux archive, verifies `frp_sha256_checksums.txt`, and
 atomically installs both `frpc` and `frps` with rollback. `luci-app-frp`
-provides Core, Client and Server tabs under one menu entry. The official
-binaries retain the embedded FRPS Dashboard, while the two procd services keep
-independent UCI and TOML configurations and can run concurrently.
+provides Client and Server tabs under one menu entry, with the shared core
+manager at the top of both pages. The official binaries retain the embedded
+FRPS Dashboard, while the two procd services keep independent UCI and TOML
+configurations and can run concurrently.
 
 The merged `frp_1.0.0-r1_all.ipk` and `luci-app-frp` IPK were built and
 verified together by GitHub Actions run `29928490032`. The lightweight package

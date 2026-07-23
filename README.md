@@ -8,7 +8,7 @@ Self-maintained OpenWrt packages used by
 | Package | Upstream | Local purpose |
 | --- | --- | --- |
 | `frp` | [`fatedier/frp`](https://github.com/fatedier/frp) | Combined client/server services with verified official core updates |
-| `luci-app-frp` | [`immortalwrt/luci`](https://github.com/immortalwrt/luci/tree/master/applications/luci-app-frpc) | Combined core, client and server management tabs |
+| `luci-app-frp` | [`immortalwrt/luci`](https://github.com/immortalwrt/luci/tree/master/applications/luci-app-frpc) | Client/server tabs with shared core management |
 | `ddns-go` | [`jeessy2/ddns-go`](https://github.com/jeessy2/ddns-go) | Router-specific DDNS engine with embedded source |
 | `luci-app-ddns-go` | [`sirpdboy/luci-app-ddns-go`](https://github.com/sirpdboy/luci-app-ddns-go) | Native LuCI management for the router DDNS engine |
 | `luci-app-adguardhome` | [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome) | LuCI integration, service management and core updates |

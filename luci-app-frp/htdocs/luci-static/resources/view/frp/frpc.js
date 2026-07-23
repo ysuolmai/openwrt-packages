@@ -5,6 +5,7 @@
 'require rpc';
 'require uci';
 'require tools.widgets as widgets';
+'require view.frp.core as coreView';
 
 //	[Widget, Option, Title, Description, {Param: 'Value'}],
 const startupConf = [
@@ -257,6 +258,8 @@ return view.extend({
 		// Plugin
 		defTabOpts(s, 'plugin', pluginConf, {modalonly: true});
 
-		return m.render();
+		return Promise.all([m.render(), coreView.load().then(function(data) { return coreView.render(data); })]).then(function(parts) {
+			return E('div', {}, [ parts[1], parts[0] ]);
+		});
 	}
 });
