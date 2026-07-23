@@ -257,3 +257,8 @@ This was verified and fixed in `openwrt-ci2` commit `1eb87fa`, all three
 `amlogic-s9xxx-openwrt` source variants in commit `aa656bb`, and `CloseWRT-CI`
 commit `10f89e7`. `OpenWRT-CI` already included `sing-box` in its conflict
 cleanup list.
+
+The lightweight nginx proxy leaves request body size unlimited and streams
+uploads directly to its upstream. This avoids rejecting firmware images over
+128 MiB or buffering them in nginx temporary storage before LuCI/uhttpd can
+process them; client-body and upstream proxy timeouts are one hour.

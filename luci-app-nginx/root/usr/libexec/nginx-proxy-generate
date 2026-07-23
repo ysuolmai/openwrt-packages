@@ -80,6 +80,7 @@ emit_proxy_headers() {
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
+            proxy_request_buffering off;
             proxy_read_timeout 3600s;
             proxy_send_timeout 3600s;
 	EOF
@@ -202,7 +203,8 @@ http {
     server_names_hash_bucket_size 64;
     access_log off;
     sendfile on;
-    client_max_body_size 128m;
+    client_max_body_size 0;
+    client_body_timeout 3600s;
 
     server {
         listen $HTTP_PORT default_server;
