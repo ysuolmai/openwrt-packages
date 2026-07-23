@@ -7,7 +7,7 @@ LUCI_DEPENDS:=+luci-base +frp
 
 PKG_VERSION:=2026.07.21
 PKG_LICENSE:=Apache-2.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

@@ -255,6 +255,9 @@ msgstr ""
 msgid "NOT RUNNING"
 msgstr ""
 
+msgid "Open Dashboard"
+msgstr ""
+
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:14
 msgid "OS environments pass to frp for config file template, see %s"
 msgstr ""

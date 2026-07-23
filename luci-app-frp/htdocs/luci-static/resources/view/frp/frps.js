@@ -1,5 +1,6 @@
 'use strict';
 'require view';
+'require dom';
 'require form';
 'require rpc';
 'require uci';
@@ -111,17 +112,36 @@ function getServiceStatus() {
 	});
 }
 
+function dashboardUrl() {
+	const port = uci.get('frps', 'common', 'dashboard_port');
+	if (!port || port === '0')
+		return null;
+
+	const tls = String(uci.get('frps', 'common', 'dashboard_tls_mode') || '').toLowerCase();
+	const scheme = ['1', 'true', 'on', 'yes'].includes(tls) ? 'https' : 'http';
+	const bind = uci.get('frps', 'common', 'dashboard_addr');
+	let host = (!bind || bind === '0.0.0.0' || bind === '::') ? window.location.hostname : bind;
+
+	if (host.includes(':') && host[0] !== '[')
+		host = `[${host}]`;
+
+	return `${scheme}://${host}:${port}/`;
+}
+
 function renderStatus(isRunning) {
-	let renderHTML = "";
-	const spanTemp = '<em><span style="color:%s"><strong>%s %s</strong></span></em>';
+	const status = E('em', {}, E('span', { style: `color:${isRunning ? 'green' : 'red'}` },
+		E('strong', {}, [_('frp Server'), ' ', isRunning ? _('RUNNING') : _('NOT RUNNING')])));
+	const url = isRunning && dashboardUrl();
 
-	if (isRunning) {
-		renderHTML += String.format(spanTemp, 'green', _("frp Server"), _("RUNNING"));
-	} else {
-		renderHTML += String.format(spanTemp, 'red', _("frp Server"), _("NOT RUNNING"));
-	}
+	if (!url)
+		return status;
 
-	return renderHTML;
+	return [status, ' ', E('a', {
+		class: 'btn cbi-button cbi-button-action',
+		href: url,
+		target: '_blank',
+		rel: 'noopener noreferrer'
+	}, _('Open Dashboard'))];
 }
 
 return view.extend({
@@ -137,7 +157,7 @@ return view.extend({
 			L.Poll.add(function () {
 				return L.resolveDefault(getServiceStatus()).then(function(res) {
 					const target = document.getElementById('service_status');
-					if (target) target.innerHTML = renderStatus(res);
+					if (target) dom.content(target, renderStatus(res));
 				});
 			});
 

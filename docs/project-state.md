@@ -148,6 +148,9 @@ restored to disabled. The LuCI forms serialize duplicate theme save handlers,
 preventing a cleared field from issuing the same UCI delete twice and failing
 the second request with ubus code 4. The lightweight package build does not
 invoke the Go or Node.js toolchains.
+When FRPS is running and its Dashboard port is configured, the Server page
+shows an Open Dashboard button. It derives HTTP or HTTPS from the Dashboard TLS
+setting and substitutes the current LuCI host for wildcard bind addresses.
 
 The local delta is intentionally narrow:
 

@@ -296,6 +296,9 @@ msgstr ""
 msgid "NOT RUNNING"
 msgstr "未在运行"
 
+msgid "Open Dashboard"
+msgstr "打开 Dashboard"
+
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:14
 msgid "OS environments pass to frp for config file template, see %s"
 msgstr "操作系统环境变量传递到 frp 用于配置文件模板，见 %s"
