@@ -172,14 +172,6 @@ jobs:
             wrt/tmp/go-build
             wrt/dl/go-mod-cache
 
-      - name: Build current Go host
-        if: (matrix.package == 'tailscale' || matrix.package == 'luci-app-tailscale-community') && steps.current-go-cache.outputs.cache-hit != 'true'
-        run: |
-          cd wrt
-          make package/feeds/packages/golang1.26/host/clean
-          make package/feeds/packages/golang1.26/host/compile -j"$(nproc)" || \
-            make package/feeds/packages/golang1.26/host/compile -j1 V=s
-
       - name: Remove conflicting packages and add this collection
         run: |
           for package in $COLLECTION_PATHS; do
@@ -219,6 +211,14 @@ jobs:
           CONFIG_USE_APK=n
           EOF
           make defconfig
+
+      - name: Build current Go host
+        if: (matrix.package == 'tailscale' || matrix.package == 'luci-app-tailscale-community') && steps.current-go-cache.outputs.cache-hit != 'true'
+        run: |
+          cd wrt
+          make package/feeds/packages/golang1.26/host/clean
+          make package/feeds/packages/golang1.26/host/compile -j"$(nproc)" || \
+            make package/feeds/packages/golang1.26/host/compile -j1 V=s
 
       - name: Build target toolchain
         if: steps.toolchain-cache.outputs.cache-hit != 'true'
