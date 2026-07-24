@@ -239,20 +239,17 @@ methods.setup_firewall = {
 
 			let changed_network = false;
 			let changed_firewall = false;
+			let restart_tailscale = false;
 
-			// 1. config Network Interface
+			// Do not let netifd manage tailscale0. A proto=none interface flushes
+			// the addresses that tailscaled dynamically assigns when the device appears.
 			let net_ts = uci.get('network', 'tailscale');
-			if (net_ts == null) {
-				uci.set('network', 'tailscale', 'interface');
-				uci.set('network', 'tailscale', 'proto', 'none');
-				uci.set('network', 'tailscale', 'device', 'tailscale0');
+			if (net_ts != null &&
+			    uci.get('network', 'tailscale', 'proto') == 'none' &&
+			    uci.get('network', 'tailscale', 'device') == 'tailscale0') {
+				uci.delete('network', 'tailscale');
 				changed_network = true;
-			} else {
-				let current_dev = uci.get('network', 'tailscale', 'device');
-				if (current_dev != 'tailscale0') {
-					uci.set('network', 'tailscale', 'device', 'tailscale0');
-					changed_network = true;
-				}
+				restart_tailscale = true;
 			}
 
 			// 2. config Firewall Zone
@@ -277,31 +274,50 @@ methods.setup_firewall = {
 				uci.set('firewall', zid, 'forward', 'ACCEPT');
 				uci.set('firewall', zid, 'masq', '1');
 				uci.set('firewall', zid, 'mtu_fix', '1');
-				uci.set('firewall', zid, 'network', ['tailscale']);
+				uci.set('firewall', zid, 'device', ['tailscale0']);
 				changed_firewall = true;
 			} else {
-				let nets = uci.get('firewall', ts_zone_section, 'network');
-				let net_list = [];
-				let has_ts_net = false;
+				let devices = uci.get('firewall', ts_zone_section, 'device');
+				let device_list = [];
+				let has_ts_device = false;
 
-				if (type(nets) == 'array') {
-					net_list = nets;
-				} else if (type(nets) == 'string') {
-					net_list = [nets];
+				if (type(devices) == 'array') {
+					device_list = devices;
+				} else if (type(devices) == 'string') {
+					device_list = [devices];
 				}
 
-				// check if 'tailscale' is already in the list
-				for (let n in net_list) {
-					if (n == 'tailscale') {
-						has_ts_net = true;
+				for (let device in device_list) {
+					if (device == 'tailscale0') {
+						has_ts_device = true;
 						break;
 					}
 				}
 
-				if (!has_ts_net) {
-					push(net_list, 'tailscale');
-					uci.set('firewall', ts_zone_section, 'network', net_list);
+				if (!has_ts_device) {
+					push(device_list, 'tailscale0');
+					uci.set('firewall', ts_zone_section, 'device', device_list);
 					changed_firewall = true;
+				}
+
+				// Remove only the obsolete network reference migrated above. Preserve
+				// any custom/static interface a user deliberately configured.
+				if (restart_tailscale) {
+					let nets = uci.get('firewall', ts_zone_section, 'network');
+					let net_list = type(nets) == 'array' ? nets :
+						(type(nets) == 'string' ? [nets] : []);
+					let kept_nets = [];
+					for (let network in net_list) {
+						if (network != 'tailscale')
+							push(kept_nets, network);
+					}
+					if (length(kept_nets) != length(net_list)) {
+						if (length(kept_nets) > 0)
+							uci.set('firewall', ts_zone_section, 'network', kept_nets);
+						else
+							uci.delete('firewall', ts_zone_section, 'network');
+						changed_firewall = true;
+					}
 				}
 			}
 
@@ -345,6 +361,11 @@ methods.setup_firewall = {
 				uci.commit('firewall');
 				exec('/etc/init.d/firewall reload');
 			}
+
+			// Once netifd has released a migrated proto=none interface, tailscaled
+			// must recreate tailscale0 and restore its dynamic addresses and routes.
+			if (restart_tailscale)
+				exec('/etc/init.d/tailscale restart');
 
 			return {
 				success: true,

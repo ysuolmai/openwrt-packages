@@ -280,8 +280,8 @@ msgstr ""
 
 #: applications/luci-app-tailscale-community/htdocs/luci-static/resources/view/tailscale.js:447
 msgid ""
-"It automatically creates the tailscale interface, sets up firewall zones for "
-"LAN <-> Tailscale forwarding,"
+"It binds the tailscale0 device to a firewall zone, sets up LAN <-> Tailscale "
+"forwarding,"
 msgstr ""
 
 #: applications/luci-app-tailscale-community/htdocs/luci-static/resources/view/tailscale.js:96

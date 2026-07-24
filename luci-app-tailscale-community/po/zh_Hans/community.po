@@ -285,9 +285,9 @@ msgstr "无效日期"
 
 #: applications/luci-app-tailscale-community/htdocs/luci-static/resources/view/tailscale.js:447
 msgid ""
-"It automatically creates the tailscale interface, sets up firewall zones for "
-"LAN <-> Tailscale forwarding,"
-msgstr "将自动创建Tailscale接口并设置防火墙区域用于LAN <-> Tailscale转发"
+"It binds the tailscale0 device to a firewall zone, sets up LAN <-> Tailscale "
+"forwarding,"
+msgstr "将 tailscale0 设备绑定到防火墙区域，并设置 LAN <-> Tailscale 转发"
 
 #: applications/luci-app-tailscale-community/htdocs/luci-static/resources/view/tailscale.js:96
 msgid "Just now"
