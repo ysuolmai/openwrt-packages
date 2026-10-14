@@ -8,8 +8,8 @@
 'require network';
 
 var callStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'status', expect: {} });
-var callAcmeStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_status', expect: {} });
-var callAcmeStart = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_start', expect: {} });
+var callAcmeStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_status', params: [ 'section' ], expect: {} });
+var callAcmeStart = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_start', params: [ 'section' ], expect: {} });
 var callApply = rpc.declare({ object: 'luci.nginx-proxy', method: 'apply', expect: {} });
 var callUpload = rpc.declare({
 	object: 'luci.nginx-proxy',
@@ -61,6 +61,20 @@ return view.extend({
 		var networks = data[1];
 		var status = data[2];
 		var m, s, o;
+		var page = this;
+
+		function setDefaultEmail(map, sectionId, domain) {
+			var option = map.lookupOption('acme_email', sectionId)[0];
+			var widget = option && option.getUIElement(sectionId);
+			if (!widget || !domain || domain.indexOf('*') >= 0) return;
+			var oldDomain = uci.get('nginx_proxy', sectionId, 'domain');
+			var value = widget.getValue();
+			if (!value || value === widget.nginxDefaultEmail ||
+				(oldDomain && value === 'admin@' + oldDomain.toLowerCase())) {
+				widget.nginxDefaultEmail = 'admin@' + domain.toLowerCase();
+				widget.setValue(widget.nginxDefaultEmail);
+			}
+		}
 
 		m = this.map = new form.Map('nginx_proxy', _('Nginx Proxy'));
 
@@ -114,27 +128,6 @@ return view.extend({
 		o.default = 'wan';
 		o.depends('open_firewall', '1');
 
-		o = s.option(form.Value, 'acme_email', _('ACME account email'));
-		o.description = _('Used by the shared OpenWrt ACME service. HTTP-01 requires public TCP port 80 and a domain pointing to this router. Wildcards require DNS-01 and are not supported here.');
-
-		o = s.option(form.Button, '_acme_start', _('Let’s Encrypt'));
-		o.inputtitle = _('Request / check certificates');
-		o.inputstyle = 'action';
-		o.onclick = L.bind(function() {
-			return this.handleSaveApply().then(function(applied) {
-				if (!applied) return;
-				return callAcmeStart().then(function(result) {
-					if (!result.success) throw new Error(result.error);
-					ui.addNotification(null, E('p', {}, _('Certificate check started. Renewal runs daily; see status below and system ACME logs.')));
-				});
-			}).catch(function(err) {
-				ui.addNotification(null, E('p', {}, err.message), 'error');
-			});
-		}, this);
-
-		o = s.option(form.DummyValue, '_acme_status', _('Certificate status / recent log'));
-		o.renderWidget = function() { return E('pre', { id: 'nginx-proxy-acme-status', style: 'white-space:pre-wrap;overflow-wrap:anywhere' }); };
-
 		s = m.section(form.GridSection, 'reverse_proxy', _('HTTPS reverse proxies'));
 		s.addremove = true;
 		s.anonymous = true;
@@ -146,6 +139,7 @@ return view.extend({
 
 		o = s.option(form.Value, 'domain', _('Domain'));
 		o.validate = validateDomain;
+		o.onchange = function(ev, sectionId, value) { setDefaultEmail(this.map, sectionId, value); };
 		o.rmempty = false;
 
 		o = s.option(form.ListValue, 'scheme', _('Backend protocol'));
@@ -162,10 +156,57 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.option(form.ListValue, 'certificate_source', _('Certificate source'));
+		o.onchange = function(ev, sectionId) {
+			var domain = this.map.lookupOption('domain', sectionId)[0].formvalue(sectionId);
+			setDefaultEmail(this.map, sectionId, domain);
+		};
 		o.value('manual', _('Manual upload'));
 		o.value('acme', _('Let’s Encrypt (HTTP-01)'));
 		o.default = 'manual';
 		o.rmempty = false;
+
+		o = s.option(form.Value, 'acme_email', _('ACME account email'));
+		o.modalonly = true;
+		o.depends('certificate_source', 'acme');
+		o.cfgvalue = function(sectionId) {
+			var domain = uci.get('nginx_proxy', sectionId, 'domain');
+			return uci.get('nginx_proxy', sectionId, 'acme_email') ||
+				uci.get('nginx_proxy', 'main', 'acme_email') || (domain ? 'admin@' + domain.toLowerCase() : '');
+		};
+		o.description = _('Defaults to admin@your-domain. HTTP-01 requires public TCP port 80 and a domain pointing to this router. Wildcards are not supported.');
+
+		o = s.option(form.Button, '_acme_start', _('Let’s Encrypt'));
+		o.modalonly = true;
+		o.depends('certificate_source', 'acme');
+		o.inputtitle = _('Request / check certificate');
+		o.inputstyle = 'action';
+		o.onclick = function(ev, sectionId) {
+			var modalMap = this.map;
+			// GridSection's editor owns a separate map. Parse its inputs before applying.
+			return page.map.children[0].parse().then(function() {
+				return modalMap.save(null, true);
+			}).then(function() {
+				return page.map.load().then(L.bind(page.map.reset, page.map));
+			}).then(function() {
+				return page.applyConfig();
+			}).then(function(applied) {
+				if (!applied) return;
+				return callAcmeStart(sectionId).then(function(result) {
+					if (!result.success) throw new Error(result.error);
+					ui.addNotification(null, E('p', {}, _('Certificate check started for this domain. Renewal runs daily.')));
+				});
+			}).catch(function(err) {
+				ui.addNotification(null, E('p', {}, err.message), 'error');
+			});
+		};
+
+		o = s.option(form.DummyValue, '_acme_status', _('Certificate status / recent log'));
+		o.modalonly = true;
+		o.depends('certificate_source', 'acme');
+		o.renderWidget = function(sectionId) {
+			return E('pre', { 'data-nginx-acme-section': sectionId, style: 'white-space:pre-wrap;overflow-wrap:anywhere' },
+				_('Save and apply this domain to view certificate status'));
+		};
 
 		o = s.option(form.Button, '_pem', 'PEM');
 		o.inputstyle = 'action';
@@ -187,10 +228,12 @@ return view.extend({
 		o.depends('scheme', 'https');
 
 		poll.add(function() {
-			return callAcmeStatus().then(function(result) {
-				var node = document.getElementById('nginx-proxy-acme-status');
-				if (node) node.textContent = result.output || _('No automatic certificates configured');
-			});
+			return Promise.all(Array.from(document.querySelectorAll('[data-nginx-acme-section]')).map(function(node) {
+				var sectionId = node.getAttribute('data-nginx-acme-section');
+				return callAcmeStatus(sectionId).then(function(result) {
+					node.textContent = result.output || result.error || _('Awaiting certificate');
+				});
+			}));
 		}, 10);
 
 		poll.add(function() {
@@ -209,12 +252,14 @@ return view.extend({
 	},
 
 	handleSaveApply: function(ev, mode) {
-		return this.handleSave(ev).then(function() {
-			return uci.apply().catch(function(err) {
-				if (err === 5 || (err && (err.code === 5 || /ubus code 5/.test(err.message || ''))))
-					return;
-				throw err;
-			});
+		return this.handleSave(ev).then(L.bind(this.applyConfig, this));
+	},
+
+	applyConfig: function() {
+		return uci.apply().catch(function(err) {
+			if (err === 5 || (err && (err.code === 5 || /ubus code 5/.test(err.message || ''))))
+				return;
+			throw err;
 		}).then(function() {
 			return callApply();
 		}).then(function(result) {

@@ -32,12 +32,17 @@ Use a feed providing the split `acme-acmesh` and `acme-common` packages
 2. Set the proxy's HTTP port to **80** and allow inbound HTTP in the relevant
    firewall zone (the plugin can manage this rule). Keep the port reachable
    for future renewals. Outbound HTTPS and correct router time are also needed.
-3. Enter an **ACME account email**, add an enabled reverse proxy, and select
-   **Let's Encrypt (HTTP-01)** as its certificate source.
-4. Click **Request / check certificates**. This saves and applies the proxy
-   configuration, then launches the ACME check in the background. Check the
-   certificate status/recent log below; detailed failures also appear in
-   `logread` under the system ACME service.
+3. Add/edit an enabled reverse proxy and select **Let's Encrypt (HTTP-01)**
+   as its certificate source. The domain editor fills the email as
+   `admin@<domain>`; you can replace it. Existing site or legacy global email
+   settings take precedence over this default. Empty emails also default on
+   the backend, so older configurations need no migration.
+4. Click **Request / check certificate** in that domain's editor. This saves
+   the editor and service settings, applies the proxy configuration, then
+   launches a background check for **only this domain**. Its certificate
+   expiry and recent request log appear in the same editor; detailed ACME
+   failures also appear in `logread`. Manual certificate sources instead show
+   the PEM and KEY upload buttons.
 
 Before the first certificate is available, that site's HTTP listener serves
 only `/.well-known/acme-challenge/`; other requests return 503. On issuance,
@@ -65,8 +70,14 @@ configuration reconciles these sections and removes entries for deleted,
 disabled or manual-certificate sites. Disabling or uninstalling the plugin
 removes its jobs, preserving accounts, certificates and other ACME jobs.
 
-The email is the **shared ACME account email**, and the request/check button
-checks **all enabled system ACME jobs**, including ones configured elsewhere.
+Each domain's request/check button runs only its own generated ACME section,
+using the installed acme-common wrapper's configuration loader and certificate
+hook. Manual requests are serialized because account state is shared; the
+request log and status are separate for each domain. Daily cron still checks
+all enabled system ACME jobs. Account state is shared, and daily cron uses
+the first enabled proxy's email as the shared ACME email. The per-domain
+email is used when manually issuing that domain's certificate; changing an
+email does not create a separate ACME account.
 The plugin enables the system ACME and cron services; it leaves them enabled
 when disabled so unrelated scheduled jobs continue running. Existing ACME
 jobs for the same domain should be consolidated to avoid conflicting settings.
@@ -75,6 +86,7 @@ jobs for the same domain should be consolidated to avoid conflicting settings.
 
 ```sh
 python3 luci-app-nginx/tests/test_acme.py
+node luci-app-nginx/tests/test_ui.js
 ./scripts/validate.sh
 git diff --check
 ```

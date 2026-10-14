@@ -23,14 +23,22 @@ const methods = {
 	},
 
 	acme_status: {
-		call: function() {
-			return { output: trim(run('/usr/libexec/nginx-proxy-acme status').output) };
+		args: { section: '' },
+		call: function(request) {
+			let section = request.args?.section;
+			if (!match(section || '', /^[A-Za-z0-9_]{1,64}$/))
+				return { success: false, error: 'invalid site identifier' };
+			return { output: trim(run('/usr/libexec/nginx-proxy-acme status ' + section).output) };
 		}
 	},
 
 	acme_start: {
-		call: function() {
-			let result = run('/usr/libexec/nginx-proxy-acme start');
+		args: { section: '' },
+		call: function(request) {
+			let section = request.args?.section;
+			if (!match(section || '', /^[A-Za-z0-9_]{1,64}$/))
+				return { success: false, error: 'invalid site identifier' };
+			let result = run('/usr/libexec/nginx-proxy-acme start ' + section);
 			return { success: result.status === 0, error: trim(result.output) };
 		}
 	},

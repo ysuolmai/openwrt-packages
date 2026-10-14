@@ -372,3 +372,22 @@ still restore management access. Offline rootfs installs skip live actions.
 Lifecycle checks execute the extracted Makefile scripts against a stub
 apply helper for upgrade, removal, disabled config and offline installation.
 This validates control flow; a live router package upgrade was not performed.
+
+
+### Per-domain certificate workflow (release 8)
+
+The domain editor now contains the certificate source, ACME email, request
+button and status/log. Manual mode shows the PEM/KEY upload controls instead.
+Emails default to `admin@<domain>` in both UI and backend; existing per-site
+or legacy global emails remain effective. Each manual request selects only
+its own `nginx_proxy_*` ACME section through the installed acme-common init
+script's configuration loader/get_cert hook. Daily system cron is unchanged
+and account state remains shared. Manual requests have a shared lock with
+separate per-site logs; selected-section IDs are validated in RPC and shell.
+The request action saves the separate LuCI modal map before applying, so new
+or edited domain values are persisted before issuance. A runnable Node check
+covers email precedence, modal save ordering, selected-site RPC arguments and
+validation failure stopping issuance. Shell regression checks cover default
+and custom emails, status isolation and selected native wrapper invocation;
+the latter was also exercised with OpenWrt 24.10's actual acme-common init
+script using a harmless certificate hook. No real CA request was made.

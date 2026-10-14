@@ -105,3 +105,18 @@ msgstr "Let’s Encrypt（HTTP-01）"
 
 msgid "No automatic certificates configured"
 msgstr "尚未配置自动证书"
+
+msgid "Defaults to admin@your-domain. HTTP-01 requires public TCP port 80 and a domain pointing to this router. Wildcards are not supported."
+msgstr "默认填写 admin@所填域名，可自行修改。HTTP-01 需要公网 TCP 80 端口可达，并将域名解析到此路由器。不支持泛域名。"
+
+msgid "Request / check certificate"
+msgstr "申请 / 检查证书"
+
+msgid "Certificate check started for this domain. Renewal runs daily."
+msgstr "已开始申请或检查此域名的证书，之后每日自动检查续期。"
+
+msgid "Save and apply this domain to view certificate status"
+msgstr "保存并应用此域名后可查看证书状态"
+
+msgid "Awaiting certificate"
+msgstr "等待签发证书"

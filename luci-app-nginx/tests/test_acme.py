@@ -166,6 +166,16 @@ json.dump(d,open(p,'w'))
     data = json.loads(db.read_text())
     assert data['other.enabled'] == '1' and 'global.account_email' not in data
     assert not any(key.startswith('nginx_proxy_') for key in data)
+    # Missing emails get a usable domain-derived default, including old config files.
+    result = run({'main': {'enabled': 1}, 'site': {'certificate_source': 'acme', 'domain': 'app.example.org'}})
+    assert result.returncode == 0, result.stderr
+    data = json.loads(db.read_text())
+    assert data['global.account_email'] == 'admin@app.example.org'
+    assert data['nginx_proxy_site.account_email'] == 'admin@app.example.org'
+    result = run({'main': {'enabled': 1}, 'site': {'certificate_source': 'acme',
+        'domain': 'app.example.org', 'acme_email': 'custom@example.org'}})
+    assert result.returncode == 0, result.stderr
+    assert json.loads(db.read_text())['nginx_proxy_site.account_email'] == 'custom@example.org'
     db.write_text(json.dumps(initial))
     result = run(config)
     assert result.returncode == 0, result.stderr
@@ -188,6 +198,71 @@ json.dump(d,open(p,'w'))
     assert result.returncode == 0, result.stderr
     data = json.loads(db.read_text())
     assert data['other.enabled'] == '1' and 'nginx_proxy_site' not in data
+
+
+def test_selected_renew(directory):
+    proxy = {'main': {'enabled': 1},
+        'site': {'certificate_source': 'acme', 'domain': 'app.example.org'},
+        'second': {'certificate_source': 'acme', 'domain': 'other.example.org'}}
+    helper = (ROOT / 'root/usr/libexec/nginx-proxy-acme').read_text()
+    helper = helper.replace('. /lib/functions.sh', config_stub(proxy))
+    helper = helper.replace('/var/run/nginx-proxy-acme', str(directory / 'request'))
+    helper = helper.replace('/etc/ssl/acme/', str(directory / 'certs') + '/')
+    (directory / 'request-site.log').write_text('selected site log')
+    (directory / 'request-second.log').write_text('other site log')
+    result = subprocess.run(['sh', '-s', '--', 'status', 'site'], input=helper, text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+    assert 'selected site log' in result.stdout and 'other site log' not in result.stdout
+    for section in ['missing', 'site;id', '../site', 'x' * 65]:
+        result = subprocess.run(['sh', '-s', '--', 'status', section], input=helper, text=True, capture_output=True)
+        assert result.returncode != 0
+
+    # Optional real acme-common init script exercises the supported native API.
+    native_path = os.environ.get('ACME_TEST_INIT')
+    if native_path:
+        native = Path(native_path).read_text().replace('"$IPKG_INSTROOT/usr/lib/acme/functions.sh"', '/dev/null')
+    else:
+        native = """run_dir=/unused
+CHALLENGE_DIR=/unused
+extra_command renew 'Renew certificates'
+load_globals() { config_get account_email "$1" account_email; export account_email; }
+get_cert() { config_get main_domain "$1" domains; export main_domain; "$HOOK" get; }
+cleanup() { :; }
+"""
+    hook = directory / 'acme-hook'
+    hook.write_text('#!/bin/sh\nprintf "%s:%s\\n" "$main_domain" "$account_email"\n')
+    hook.chmod(0o755)
+    native = native.replace('HOOK=/usr/lib/acme/hook', 'HOOK=' + shlex.quote(str(hook)))
+    native += '\nrun_dir=' + shlex.quote(str(directory / 'native-run'))
+    native += '\nCHALLENGE_DIR="$run_dir/challenge"\nHOOK=' + shlex.quote(str(hook)) + '\n'
+    wrapper = directory / 'acme-init'
+    wrapper.write_text(native)
+    helper = helper.split('case "$1" in\n\tsync)', 1)[0]
+    helper = helper.replace('. /etc/init.d/acme', '. ' + shlex.quote(str(wrapper)))
+    helper += """
+log() { :; }
+config_load() {
+    [ "$1" != acme ] || {
+        globals_account_email=shared@example.org
+        nginx_proxy_site_account_email=admin@app.example.org
+        nginx_proxy_site_domains=app.example.org
+        nginx_proxy_site_enabled=1
+        nginx_proxy_site_validation_method=webroot
+    }
+}
+config_foreach() {
+    case "$2" in
+        acme) "$1" globals ;;
+        reverse_proxy) "$1" site; "$1" second ;;
+        cert) "$1" nginx_proxy_site; "$1" unrelated ;;
+    esac
+}
+select_site site
+renew_site
+"""
+    result = subprocess.run(['sh', '-s'], input=helper, text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == 'app.example.org:admin@app.example.org', result.stdout
 
 
 def test_package_lifecycle(directory):
@@ -223,4 +298,5 @@ if __name__ == '__main__':
         test_generator(directory)
         test_sync(directory)
         test_package_lifecycle(directory)
+        test_selected_renew(directory)
     print('ACME bootstrap, certificate routing, validation, manual compatibility and UCI ownership checks passed.')
