@@ -29,11 +29,15 @@ def run_generator(directory, **opts):
     config = {'main': {'management_http_port': 80}, 'site': {
         'domain': 'app.example.org', 'backend': '192.168.1.2', 'port': 3000,
         'certificate_source': 'acme', **opts}}
+    if config['site']['certificate_source'] is None:
+        del config['site']['certificate_source']
     if 'http_port' in opts:
         config['main']['management_http_port'] = opts.pop('http_port')
     script = (ROOT / 'root/usr/libexec/nginx-proxy-generate').read_text()
     script = script.replace('. /lib/functions.sh', config_stub(config)).replace('. /lib/functions/network.sh', '')
     script = script.replace('/etc/ssl/acme/', str(directory / 'certs') + '/')
+    script = script.replace('/etc/nginx-proxy/certs/', str(directory / 'uploads') + '/')
+    script = script.replace('(etc/nginx-proxy|', '(' + str(directory / 'uploads').lstrip('/') + '|')
     # Keep the production validation whitelist, just map its ACME alternative to the fixture path.
     script = script.replace('|etc/ssl|', '|' + str(directory / 'certs').lstrip('/') + '|')
     output = directory / 'nginx.conf'
@@ -109,6 +113,18 @@ def test_generator(directory):
         certificate=str(certs / 'app.example.org.fullchain.crt'), private_key=str(certs / 'app.example.org.key'))
     assert result.returncode == 0, result.stderr
     assert 'proxy_pass http://192.168.1.2:3000;' in text
+    # An old configuration has neither certificate_source nor acme_email.
+    result, text = run_generator(directory, certificate_source=None, http_port=8081,
+        certificate=str(certs / 'app.example.org.fullchain.crt'), private_key=str(certs / 'app.example.org.key'))
+    assert result.returncode == 0, result.stderr
+    assert 'listen 8081;' in text and 'listen 443 ssl;' in text
+    uploads = directory / 'uploads'
+    uploads.mkdir()
+    (uploads / 'site_old.cert.pem').symlink_to(certs / 'app.example.org.fullchain.crt')
+    (uploads / 'site_old.key').symlink_to(certs / 'app.example.org.key')
+    result, text = run_generator(directory, certificate_source=None, cert_id='site_old')
+    assert result.returncode == 0, result.stderr
+    assert str(uploads / 'site_old.cert.pem') in text
 
 
 def test_sync(directory):
@@ -144,6 +160,13 @@ json.dump(d,open(p,'w'))
         return subprocess.run(['sh', '-s', '--', 'sync'] + ([mode] if mode else []), input=script, env=env, text=True, capture_output=True)
 
     db.write_text(json.dumps(initial))
+    # Legacy manual sites need no new settings, email, or port-80 restriction.
+    result = run({'main': {'enabled': 1, 'management_http_port': 8081}, 'site': {'domain': 'app.example.org'}})
+    assert result.returncode == 0, result.stderr
+    data = json.loads(db.read_text())
+    assert data['other.enabled'] == '1' and 'global.account_email' not in data
+    assert not any(key.startswith('nginx_proxy_') for key in data)
+    db.write_text(json.dumps(initial))
     result = run(config)
     assert result.returncode == 0, result.stderr
     data = json.loads(db.read_text())
@@ -167,9 +190,37 @@ json.dump(d,open(p,'w'))
     assert data['other.enabled'] == '1' and 'nginx_proxy_site' not in data
 
 
+def test_package_lifecycle(directory):
+    makefile = (ROOT / 'Makefile').read_text()
+    calls = directory / 'package-calls'
+    apply = directory / 'apply'
+    apply.write_text('#!/bin/sh\necho "$1" >> ' + shlex.quote(str(calls)) + '\n')
+    apply.chmod(0o755)
+
+    def run(kind, **environment):
+        script = makefile.split('define Package/luci-app-nginx/' + kind + '\n', 1)[1].split('\nendef', 1)[0]
+        script = script.replace('$$', '$').replace('/usr/libexec/nginx-proxy-apply', str(apply))
+        script = script.replace('$(uci -q get nginx_proxy.main.enabled)', '$TEST_ENABLED')
+        calls.write_text('')
+        env = dict(os.environ, IPKG_INSTROOT='', PKG_UPGRADE='', TEST_ENABLED='1')
+        env.update(environment)
+        result = subprocess.run(['sh', '-s'], input=script, text=True, env=env, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        return calls.read_text().splitlines()
+
+    assert run('prerm', PKG_UPGRADE='1') == []
+    assert run('prerm') == ['disable']
+    assert run('prerm', IPKG_INSTROOT='/offline') == []
+    # Includes upgrades FROM old versions whose prerm already restored uhttpd.
+    assert run('postinst', PKG_UPGRADE='1') == ['apply']
+    assert run('postinst', TEST_ENABLED='0') == []
+    assert run('postinst', IPKG_INSTROOT='/offline') == []
+
+
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory(prefix='nginx-acme-test-') as temp:
         directory = Path(temp)
         test_generator(directory)
         test_sync(directory)
+        test_package_lifecycle(directory)
     print('ACME bootstrap, certificate routing, validation, manual compatibility and UCI ownership checks passed.')

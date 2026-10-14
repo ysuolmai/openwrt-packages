@@ -356,3 +356,19 @@ HTTP-01 tokens before and after certificate availability in isolated
 `nginx:alpine` containers without published ports. No real CA requests,
 firmware builds or live router configuration changes were performed.
 Upstream tracking was checked; unrelated available updates were left alone.
+
+
+### Legacy Nginx configuration and live upgrades (release 7)
+
+Explicit regression checks now cover old configurations with no ACME fields:
+path-based certificates, stable uploaded cert IDs, non-80 HTTP ports, and no
+ACME email. Manual certificates remain the default without migration.
+Review also identified that old prerm scripts fully disable the proxy even
+on package upgrades, restoring uhttpd listeners and removing service enable
+links. Release 7's postinst reapplies a preserved enabled configuration
+before the standard OpenWrt service start, handling upgrades from those old
+packages. Its prerm skips full cleanup when `PKG_UPGRADE=1`; real removals
+still restore management access. Offline rootfs installs skip live actions.
+Lifecycle checks execute the extracted Makefile scripts against a stub
+apply helper for upgrade, removal, disabled config and offline installation.
+This validates control flow; a live router package upgrade was not performed.

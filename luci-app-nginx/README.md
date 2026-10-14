@@ -4,6 +4,22 @@ Lightweight HTTPS reverse proxies with an isolated Nginx instance. LuCI's
 uhttpd backend stays on loopback; only configured management networks can
 access its Nginx frontend.
 
+## Upgrading existing configurations
+
+Existing `/etc/config/nginx_proxy` and `/etc/nginx-proxy/` certificate files
+are retained during normal package upgrades. Sites without a
+`certificate_source` field default to manual certificates; existing
+`cert_id`, `certificate` and `private_key` settings still work. ACME email
+and the port-80 requirement apply only to enabled automatic-certificate sites.
+No migration or manual edits are needed to retain manual certificates.
+
+Release 7 also reapplies an enabled proxy during live installation/upgrade:
+older package removal scripts restore uhttpd's public listeners even during
+upgrades, so the new post-install script must take them back before starting
+Nginx. Subsequent upgrades skip full removal cleanup. A brief service restart
+is expected. Genuine uninstall still restores uhttpd. Offline firmware image
+installation skips these live actions.
+
 ## Let's Encrypt certificates
 
 The package depends on OpenWrt `acme-acmesh` / `acme-common`. It uses their
