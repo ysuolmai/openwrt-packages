@@ -26,6 +26,7 @@ restore_management() {
 	uci -q commit uhttpd
 	uci -q set nginx_proxy.main.enabled=0
 	uci -q commit nginx_proxy
+	/usr/libexec/nginx-proxy-acme sync disable || true
 	/etc/init.d/uhttpd restart
 	logger -t nginx-proxy 'configuration failed; proxy disabled and LuCI access restored'
 }

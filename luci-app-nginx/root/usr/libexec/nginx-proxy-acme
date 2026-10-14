@@ -1,0 +1,101 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+# OpenWrt acme-common owns scheduling and acme-acmesh owns account/key state.
+# Only nginx_proxy_* sections are managed here; unrelated ACME jobs are retained.
+fail() { echo "nginx-proxy: $*" >&2; exit 1; }
+
+collect() {
+	local section="$1" enabled source domain
+	config_get_bool enabled "$section" enabled 1
+	config_get source "$section" certificate_source manual
+	[ "$ACTIVE" = 1 ] && [ "$enabled" = 1 ] && [ "$source" = acme ] || return 0
+	config_get domain "$section" domain
+	domain="$(printf '%s' "$domain" | tr 'A-Z' 'a-z')"
+	echo "$domain" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$' ||
+		fail 'HTTP-01 requires a valid non-wildcard domain'
+	case "$section" in ''|*[!A-Za-z0-9_]*) fail 'invalid section identifier' ;; esac
+	[ "$HTTP_PORT" = 80 ] || fail 'HTTP-01 requires HTTP port 80'
+	SITES="$SITES $section:$domain"
+}
+
+sync_config() {
+	local item section domain email global old
+	SITES=
+	config_load nginx_proxy
+	config_get_bool ACTIVE main enabled 0
+	[ "${1-}" != disable ] || ACTIVE=0
+	config_get HTTP_PORT main management_http_port 80
+	config_get email main acme_email
+	config_foreach collect reverse_proxy
+	if [ -n "$SITES" ]; then
+		echo "$email" | grep -Eq '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}$' ||
+			fail 'enter a valid ACME account email'
+		[ -x /etc/init.d/acme ] || fail 'install acme-acmesh first'
+	fi
+	# Validate everything before modifying shared ACME configuration.
+	for old in $(uci -q show acme | sed -n 's/^acme\.\(nginx_proxy_[A-Za-z0-9_]*\)=cert$/\1/p'); do
+		uci -q delete "acme.$old"
+	done
+	if [ -n "$SITES" ]; then
+		global="$(uci -q show acme | sed -n 's/^acme\.\([^=]*\)=acme$/\1/p' | head -n 1)"
+		[ -n "$global" ] || global="$(uci add acme acme)"
+		uci set "acme.$global.account_email=$email"
+		for item in $SITES; do
+			section="nginx_proxy_${item%%:*}"
+			domain="${item#*:}"
+			uci set "acme.$section=cert"
+			uci set "acme.$section.enabled=1"
+			uci set "acme.$section.validation_method=webroot"
+			uci set "acme.$section.key_type=ec256"
+			uci set "acme.$section.staging=0"
+			uci add_list "acme.$section.domains=$domain"
+		done
+	fi
+	uci commit acme || return 1
+	if [ -n "$SITES" ]; then
+		mkdir -p /var/run/acme/challenge
+		/etc/init.d/acme enable
+		/etc/init.d/acme start
+		/etc/init.d/cron enable
+		/etc/init.d/cron start
+	fi
+}
+
+case "$1" in
+	sync) sync_config "${2-}" ;;
+	start)
+		[ "$(uci -q get nginx_proxy.main.enabled)" = 1 ] || fail 'enable and apply the proxy first'
+		/etc/init.d/nginx-proxy running || fail 'enable and apply the proxy first'
+		mkdir /var/run/nginx-proxy-acme.lock 2>/dev/null || fail 'certificate check already running'
+		# Detach from rpcd; ACME may need several minutes. No force-renew (rate limits).
+		umask 077
+		"$0" run </dev/null >/var/run/nginx-proxy-acme.log 2>&1 &
+		;;
+	run)
+		trap 'rmdir /var/run/nginx-proxy-acme.lock' EXIT
+		trap 'exit 1' HUP INT TERM
+		sync_config || exit 1
+		[ -n "$SITES" ] || fail 'no enabled automatic certificate sites'
+		/etc/init.d/acme renew
+		;;
+	status)
+		if [ -d /var/run/nginx-proxy-acme.lock ]; then echo 'Certificate check running'; fi
+		config_load nginx_proxy
+		show_cert() {
+			local source domain
+			config_get source "$1" certificate_source manual
+			[ "$source" = acme ] || return 0
+			config_get domain "$1" domain
+			domain="$(printf '%s' "$domain" | tr 'A-Z' 'a-z')"
+			echo "$domain" | grep -Eq '^([A-Za-z0-9-]+\.)+[A-Za-z]{2,63}$' || return 0
+			echo "$domain:"
+			openssl x509 -in "/etc/ssl/acme/$domain.fullchain.crt" -noout -enddate 2>/dev/null || echo 'Awaiting certificate'
+		}
+		config_foreach show_cert reverse_proxy
+		tail -n 15 /var/run/nginx-proxy-acme.log 2>/dev/null
+		exit 0
+		;;
+	*) echo "Usage: $0 [sync|start|run|status]" >&2; exit 2 ;;
+esac

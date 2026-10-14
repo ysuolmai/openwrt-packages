@@ -1,0 +1,10 @@
+#!/bin/sh
+
+case "$ACTION" in
+	issued|renewed)
+		[ "$(uci -q get nginx_proxy.main.enabled)" = 1 ] || exit 0
+		/etc/init.d/nginx-proxy running || exit 0
+		# reload_service generates and nginx-tests a candidate before sending HUP.
+		/etc/init.d/nginx-proxy reload || logger -t nginx-proxy 'ACME certificate reload failed; existing nginx workers retained'
+		;;
+esac

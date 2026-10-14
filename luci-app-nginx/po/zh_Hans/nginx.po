@@ -75,3 +75,33 @@ msgstr "无法应用 nginx 配置"
 
 msgid "Nginx configuration applied"
 msgstr "Nginx 配置已应用"
+
+msgid "ACME account email"
+msgstr "ACME 账户邮箱"
+
+msgid "Used by the shared OpenWrt ACME service. HTTP-01 requires public TCP port 80 and a domain pointing to this router. Wildcards require DNS-01 and are not supported here."
+msgstr "供系统共用的 OpenWrt ACME 服务使用。HTTP-01 需要公网 TCP 80 端口可达，并将域名解析到此路由器。此处不支持需要 DNS-01 的泛域名。"
+
+msgid "Let’s Encrypt"
+msgstr "Let’s Encrypt"
+
+msgid "Request / check certificates"
+msgstr "申请 / 检查证书"
+
+msgid "Certificate check started. Renewal runs daily; see status below and system ACME logs."
+msgstr "已开始检查证书。系统每日自动续期，请查看下方状态和系统 ACME 日志。"
+
+msgid "Certificate status / recent log"
+msgstr "证书状态 / 最近日志"
+
+msgid "Certificate source"
+msgstr "证书来源"
+
+msgid "Manual upload"
+msgstr "手动上传"
+
+msgid "Let’s Encrypt (HTTP-01)"
+msgstr "Let’s Encrypt（HTTP-01）"
+
+msgid "No automatic certificates configured"
+msgstr "尚未配置自动证书"

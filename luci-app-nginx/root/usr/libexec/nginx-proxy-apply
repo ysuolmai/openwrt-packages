@@ -98,6 +98,7 @@ disable_proxy() {
 	delete_firewall_rules
 	uci -q commit firewall
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	/usr/libexec/nginx-proxy-acme sync disable || log 'failed to remove managed ACME jobs'
 	restore_uhttpd || {
 		log 'failed to restore uhttpd configuration'
 		return 1
@@ -106,6 +107,7 @@ disable_proxy() {
 }
 
 rollback_enable() {
+	/usr/libexec/nginx-proxy-acme sync disable || true
 	/etc/init.d/nginx-proxy stop >/dev/null 2>&1 || true
 	/etc/init.d/nginx-proxy disable >/dev/null 2>&1 || true
 	delete_firewall_rules
@@ -121,6 +123,11 @@ enable_proxy() {
 		/var/log/nginx /var/log/nginx-proxy
 	"$GENERATOR" "$candidate" || return 1
 	/usr/sbin/nginx -t -q -c "$candidate" || {
+		rm -f "$candidate"
+		return 1
+	}
+
+	/usr/libexec/nginx-proxy-acme sync || {
 		rm -f "$candidate"
 		return 1
 	}

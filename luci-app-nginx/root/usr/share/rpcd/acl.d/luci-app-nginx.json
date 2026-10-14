@@ -4,7 +4,7 @@
 		"read": {
 			"uci": [ "nginx_proxy", "network" ],
 			"ubus": {
-				"luci.nginx-proxy": [ "status", "check" ],
+				"luci.nginx-proxy": [ "status", "check", "acme_status" ],
 				"network.interface": [ "dump" ],
 				"service": [ "list" ]
 			}
@@ -15,7 +15,7 @@
 			},
 			"uci": [ "nginx_proxy" ],
 			"ubus": {
-				"luci.nginx-proxy": [ "apply", "upload" ],
+				"luci.nginx-proxy": [ "apply", "upload", "acme_start" ],
 				"uci": [ "apply" ]
 			}
 		}

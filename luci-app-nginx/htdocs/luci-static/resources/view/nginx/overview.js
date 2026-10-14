@@ -8,6 +8,8 @@
 'require network';
 
 var callStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'status', expect: {} });
+var callAcmeStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_status', expect: {} });
+var callAcmeStart = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_start', expect: {} });
 var callApply = rpc.declare({ object: 'luci.nginx-proxy', method: 'apply', expect: {} });
 var callUpload = rpc.declare({
 	object: 'luci.nginx-proxy',
@@ -112,6 +114,27 @@ return view.extend({
 		o.default = 'wan';
 		o.depends('open_firewall', '1');
 
+		o = s.option(form.Value, 'acme_email', _('ACME account email'));
+		o.description = _('Used by the shared OpenWrt ACME service. HTTP-01 requires public TCP port 80 and a domain pointing to this router. Wildcards require DNS-01 and are not supported here.');
+
+		o = s.option(form.Button, '_acme_start', _('Let’s Encrypt'));
+		o.inputtitle = _('Request / check certificates');
+		o.inputstyle = 'action';
+		o.onclick = L.bind(function() {
+			return this.handleSaveApply().then(function(applied) {
+				if (!applied) return;
+				return callAcmeStart().then(function(result) {
+					if (!result.success) throw new Error(result.error);
+					ui.addNotification(null, E('p', {}, _('Certificate check started. Renewal runs daily; see status below and system ACME logs.')));
+				});
+			}).catch(function(err) {
+				ui.addNotification(null, E('p', {}, err.message), 'error');
+			});
+		}, this);
+
+		o = s.option(form.DummyValue, '_acme_status', _('Certificate status / recent log'));
+		o.renderWidget = function() { return E('pre', { id: 'nginx-proxy-acme-status', style: 'white-space:pre-wrap;overflow-wrap:anywhere' }); };
+
 		s = m.section(form.GridSection, 'reverse_proxy', _('HTTPS reverse proxies'));
 		s.addremove = true;
 		s.anonymous = true;
@@ -138,22 +161,37 @@ return view.extend({
 		o.datatype = 'port';
 		o.rmempty = false;
 
+		o = s.option(form.ListValue, 'certificate_source', _('Certificate source'));
+		o.value('manual', _('Manual upload'));
+		o.value('acme', _('Let’s Encrypt (HTTP-01)'));
+		o.default = 'manual';
+		o.rmempty = false;
+
 		o = s.option(form.Button, '_pem', 'PEM');
 		o.inputstyle = 'action';
 		o.inputtitle = _('Upload PEM');
 		o.onclick = L.bind(uploadTlsFile, null, 'pem');
 		o.modalonly = true;
+		o.depends('certificate_source', 'manual');
 
 		o = s.option(form.Button, '_key', 'KEY');
 		o.inputstyle = 'action';
 		o.inputtitle = _('Upload KEY');
 		o.onclick = L.bind(uploadTlsFile, null, 'key');
 		o.modalonly = true;
+		o.depends('certificate_source', 'manual');
 
 		o = s.option(form.Flag, 'verify_tls', _('Verify backend certificate'));
 		o.default = '0';
 		o.modalonly = true;
 		o.depends('scheme', 'https');
+
+		poll.add(function() {
+			return callAcmeStatus().then(function(result) {
+				var node = document.getElementById('nginx-proxy-acme-status');
+				if (node) node.textContent = result.output || _('No automatic certificates configured');
+			});
+		}, 10);
 
 		poll.add(function() {
 			return callStatus().then(function(result) {
@@ -183,8 +221,10 @@ return view.extend({
 			if (!result.success)
 				throw new Error(result.error || _('Unable to apply nginx configuration'));
 			ui.addNotification(null, E('p', {}, _('Nginx configuration applied')));
+			return true;
 		}).catch(function(err) {
 			ui.addNotification(null, E('p', {}, err.message), 'error');
+			return false;
 		});
 	},
 

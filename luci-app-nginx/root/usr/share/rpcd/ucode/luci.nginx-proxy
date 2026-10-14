@@ -22,6 +22,19 @@ const methods = {
 		}
 	},
 
+	acme_status: {
+		call: function() {
+			return { output: trim(run('/usr/libexec/nginx-proxy-acme status').output) };
+		}
+	},
+
+	acme_start: {
+		call: function() {
+			let result = run('/usr/libexec/nginx-proxy-acme start');
+			return { success: result.status === 0, error: trim(result.output) };
+		}
+	},
+
 	apply: {
 		call: function() {
 			let result = run('/usr/libexec/nginx-proxy-apply apply');

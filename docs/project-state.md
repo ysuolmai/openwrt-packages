@@ -327,3 +327,32 @@ official core when the corresponding service is enabled but its executable is
 missing. Disabled services make no download request. FRPC and FRPS share their
 existing updater lock and install both official binaries together; MoonTVPlus
 installs its core and optional font in the same operation.
+
+
+## Nginx ACME integration (2026-10-14)
+
+`luci-app-nginx` release 6 adds Let's Encrypt HTTP-01 certificate sources per
+reverse proxy, a shared ACME account email, asynchronous request/check action,
+and certificate expiry/recent-log status. It depends on the split OpenWrt
+`acme-acmesh` / `acme-common` packages (24.10-style interface). System ACME cron
+owns daily checks; only `nginx_proxy_*` certificate sections are reconciled.
+The account email and manual request/check action affect the shared ACME
+service, including other enabled jobs. Disable/uninstall removes owned jobs
+without deleting account/certificate state or stopping shared ACME/cron.
+
+Certificate-less sites serve only HTTP challenge files and otherwise return
+503. Issued/renewed hotplug events call the existing candidate-generation,
+`nginx -t` and HUP reload path. Manual uploads remain supported. Wildcards,
+DNS-01 and automatic certificates for IP-based LuCI management are outside
+this version's scope. Public TCP 80 and correct A/AAAA routing are required;
+see `luci-app-nginx/README.md` for setup and shared-service behavior.
+
+Validation: repository validator, shell/JS/JSON syntax and diff whitespace
+checks passed. The runnable regression check covers bootstrap, issued
+certificates, manual compatibility, uppercase domains, invalid/wildcard
+inputs, HTTP port requirements, ACME section ownership and uninstall cleanup.
+On the remote Ubuntu host it also passed real Nginx config checks and served
+HTTP-01 tokens before and after certificate availability in isolated
+`nginx:alpine` containers without published ports. No real CA requests,
+firmware builds or live router configuration changes were performed.
+Upstream tracking was checked; unrelated available updates were left alone.
