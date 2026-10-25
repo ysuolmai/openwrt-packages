@@ -182,6 +182,7 @@ return view.extend({
 		o.inputstyle = 'action';
 		o.onclick = function(ev, sectionId) {
 			var modalMap = this.map;
+			ui.addNotification(null, E('p', {}, _('Saving domain settings and starting the certificate check…')));
 			// GridSection's editor owns a separate map. Parse its inputs before applying.
 			return page.map.children[0].parse().then(function() {
 				return modalMap.save(null, true);

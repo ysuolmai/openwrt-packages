@@ -126,6 +126,12 @@ def test_generator(directory):
     assert result.returncode == 0, result.stderr
     assert str(uploads / 'site_old.cert.pem') in text
 
+    # ACME uses the previous manual certificate until its first issuance succeeds.
+    result, text = run_generator(directory, domain='fallback.example.org', cert_id='site_old')
+    assert result.returncode == 0, result.stderr
+    assert str(uploads / 'site_old.cert.pem') in text
+    assert 'listen 443 ssl;' in text and 'location / { return 503; }' not in text
+
 
 def test_sync(directory):
     db = directory / 'uci.json'
