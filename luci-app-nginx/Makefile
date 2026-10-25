@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-nginx
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 PKG_MAINTAINER:=ysuolmai
 PKG_LICENSE:=Apache-2.0
 
@@ -23,6 +23,7 @@ define Package/luci-app-nginx/postinst
 if [ "$$(uci -q get nginx_proxy.main.enabled)" = 1 ]; then
 	/usr/libexec/nginx-proxy-apply apply || exit 1
 fi
+/etc/init.d/rpcd reload >/dev/null 2>&1 || true
 exit 0
 endef
 
