@@ -45,7 +45,7 @@ valid_path() {
 }
 
 emit_allow_network() {
-	local network="$1" subnets subnet network_addr prefix addresses address
+	local network="$1" subnets subnet network_addr prefix addresses address device
 
 	network_get_subnets subnets "$network" 2>/dev/null || subnets=
 	for subnet in $subnets; do
@@ -54,7 +54,20 @@ emit_allow_network() {
 		[ -n "$network_addr" ] && [ -n "$prefix" ] &&
 			echo "        allow $network_addr/$prefix;" >> "$ALLOW"
 	done
-
+	if [ -z "$subnets" ]; then
+		network_get_device device "$network" 2>/dev/null || device=
+		if [ -n "$device" ]; then
+			ip -o -4 addr show dev "$device" scope global 2>/dev/null |
+			while read -r index iface family subnet rest; do
+				[ "$family" = inet ] || continue
+				network_addr="$(/bin/ipcalc.sh "$subnet" 2>/dev/null | sed -n 's/^NETWORK=//p')"
+				prefix="$(/bin/ipcalc.sh "$subnet" 2>/dev/null | sed -n 's/^PREFIX=//p')"
+				[ -n "$network_addr" ] && [ -n "$prefix" ] || continue
+				echo "        allow $network_addr/$prefix;" >> "$ALLOW"
+				echo "$subnet" | sed 's,/.*$,,' >> "$NAMES"
+			done
+		fi
+	fi
 	network_get_subnets6 subnets "$network" 2>/dev/null || subnets=
 	for subnet in $subnets; do
 		echo "        allow $subnet;" >> "$ALLOW"
@@ -70,7 +83,6 @@ emit_allow_network() {
 		echo "[$address]" >> "$NAMES"
 	done
 }
-
 emit_proxy_headers() {
 	cat >> "$1" <<-'EOF'
             proxy_http_version 1.1;

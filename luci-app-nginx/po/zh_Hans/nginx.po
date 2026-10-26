@@ -115,8 +115,8 @@ msgstr "申请 / 检查证书"
 msgid "Certificate check started for this domain. Renewal runs daily."
 msgstr "已开始申请或检查此域名的证书，之后每日自动检查续期。"
 
-msgid "Save and apply this domain to view certificate status"
-msgstr "保存并应用此域名后可查看证书状态"
+msgid "Unable to find the active domain editor"
+msgstr "无法找到当前域名编辑窗口，请重新打开后再试。"
 
 msgid "Awaiting certificate"
 msgstr "等待签发证书"

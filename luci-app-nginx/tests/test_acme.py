@@ -11,22 +11,42 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def config_stub(config):
-    values = '\n'.join(f'{s}_{k}={shlex.quote(str(v))}' for s, opts in config.items() for k, v in opts.items())
+    values = '\n'.join(
+        f'{s}_{k}=' + ' '.join(shlex.quote(str(item)) for item in v)
+        if isinstance(v, list) else f'{s}_{k}={shlex.quote(str(v))}'
+        for s, opts in config.items() for k, v in opts.items())
     return values + '''
 config_load() { :; }
 config_get() { eval "local value=\\${${2}_${3}-}"; [ -n "$value" ] || value="${4-}"; export "$1=$value"; }
 config_get_bool() { config_get "$@"; }
 config_foreach() { [ "$2" != reverse_proxy ] || "$1" site; }
 config_list_foreach() {
-    echo '        allow 192.168.1.0/24;' >> "$ALLOW"
-    echo '192.168.1.1' >> "$NAMES"
+    local key="$1_$2" value item
+    eval "value=\\${$key-}"
+    for item in $value; do "$3" "$item"; done
 }
+network_get_subnets() {
+    [ "$2" != lan ] || eval "$1=192.168.1.0/24"
+    [ "$2" = lan ] || eval "$1="
+}
+network_get_subnets6() { eval "$1="; }
+network_get_ipaddrs() {
+    [ "$2" != lan ] || eval "$1=192.168.1.1"
+    [ "$2" = lan ] || eval "$1="
+}
+network_get_ipaddrs6() { eval "$1="; }
+network_get_device() { eval "$1=$2"; }
 network_flush_cache() { :; }
 '''
 
 
-def run_generator(directory, **opts):
-    config = {'main': {'management_http_port': 80}, 'site': {
+def run_generator(directory, management_network=None, **opts):
+    main = {'management_http_port': 80}
+    if management_network is None:
+        main['management_network'] = ['lan']
+    else:
+        main['management_network'] = management_network
+    config = {'main': main, 'site': {
         'domain': 'app.example.org', 'backend': '192.168.1.2', 'port': 3000,
         'certificate_source': 'acme', **opts}}
     if config['site']['certificate_source'] is None:
@@ -35,6 +55,21 @@ def run_generator(directory, **opts):
         config['main']['management_http_port'] = opts.pop('http_port')
     script = (ROOT / 'root/usr/libexec/nginx-proxy-generate').read_text()
     script = script.replace('. /lib/functions.sh', config_stub(config)).replace('. /lib/functions/network.sh', '')
+    ipcalc = directory / 'ipcalc.sh'
+    ipcalc.write_text('''#!/bin/sh
+case "$1" in
+    192.168.193.151/24) echo NETWORK=192.168.193.0; echo PREFIX=24 ;;
+    192.168.1.0/24) echo NETWORK=192.168.1.0; echo PREFIX=24 ;;
+    *) exit 1 ;;
+esac
+''')
+    ipcalc.chmod(0o755)
+    script = script.replace('/bin/ipcalc.sh', shlex.quote(str(ipcalc)))
+    ip = directory / 'ip'
+    ip.write_text('''#!/bin/sh
+[ "$*" = "-o -4 addr show dev zt scope global" ] && echo "23: zt inet 192.168.193.151/24 brd 192.168.193.255 scope global zt"
+''')
+    ip.chmod(0o755)
     script = script.replace('/etc/ssl/acme/', str(directory / 'certs') + '/')
     script = script.replace('/etc/nginx-proxy/certs/', str(directory / 'uploads') + '/')
     script = script.replace('(etc/nginx-proxy|', '(' + str(directory / 'uploads').lstrip('/') + '|')
@@ -81,6 +116,11 @@ def test_generator(directory):
     assert 'try_files $uri =404;' in text
     assert 'location / { return 503; }' in text
     assert 'ssl_certificate ' not in text and 'proxy_pass http://192.168.1.2' not in text
+
+    result, text = run_generator(directory, management_network=['zt'])
+    assert result.returncode == 0, result.stderr
+    assert 'allow 192.168.193.0/24;' in text
+    assert 'server_name 192.168.193.151' in text
 
     check_nginx(directory, text, pending=True)
 
@@ -301,6 +341,7 @@ def test_package_lifecycle(directory):
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory(prefix='nginx-acme-test-') as temp:
         directory = Path(temp)
+        os.environ['PATH'] = str(directory) + ':' + os.environ['PATH']
         test_generator(directory)
         test_sync(directory)
         test_package_lifecycle(directory)

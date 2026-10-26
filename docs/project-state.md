@@ -391,3 +391,15 @@ validation failure stopping issuance. Shell regression checks cover default
 and custom emails, status isolation and selected native wrapper invocation;
 the latter was also exercised with OpenWrt 24.10's actual acme-common init
 script using a harmless certificate hook. No real CA request was made.
+
+
+### ZeroTier LuCI access and ACME editor refresh (release 11)
+
+The nginx-proxy generator now falls back to the selected interface's actual
+IPv4 address when netifd reports no subnet, so externally managed networks
+(including ZeroTier) appear in the LuCI allow list. The domain editor's
+request button now locates and saves its active modal map directly, then
+applies the proxy config, starts the selected ACME request, and refreshes
+that modal's certificate status immediately. It no longer parses stale parent
+GridSection values before saving. Regression checks cover the ZeroTier
+interface fallback and the modal save, request and status-refresh sequence.

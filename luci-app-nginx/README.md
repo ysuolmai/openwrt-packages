@@ -38,9 +38,9 @@ Use a feed providing the split `acme-acmesh` and `acme-common` packages
    settings take precedence over this default. Empty emails also default on
    the backend, so older configurations need no migration.
 4. Click **Request / check certificate** in that domain's editor. This saves
-   the editor and service settings, applies the proxy configuration, then
+   the current domain settings, applies the proxy configuration, then
    launches a background check for **only this domain**. Its certificate
-   expiry and recent request log appear in the same editor; detailed ACME
+   expiry and recent request log refresh in the same editor; detailed ACME
    failures also appear in `logread`. Manual certificate sources instead show
    the PEM and KEY upload buttons.
 

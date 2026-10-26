@@ -265,7 +265,9 @@
         "Keep uhttpd on loopback and proxy trusted IP-based LuCI access",
         "Reject unmatched WAN virtual hosts and restore uhttpd if activation fails",
         "Validate one PEM and one KEY upload per site and store them under stable unique identifiers",
-        "Integrate OpenWrt ACME HTTP-01 issuance, daily renewal, certificate status and validated Nginx reloads"
+    "Integrate OpenWrt ACME HTTP-01 issuance, daily renewal, certificate status and validated Nginx reloads",
+    "Include externally managed interface addresses when OpenWrt does not report management-network subnets",
+    "Save ACME requests from the active LuCI domain editor and refresh status immediately"
       ]
     },
     {

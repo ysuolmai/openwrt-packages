@@ -6,6 +6,7 @@
 'require poll';
 'require ui';
 'require network';
+'require dom';
 
 var callStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'status', expect: {} });
 var callAcmeStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_status', params: [ 'section' ], expect: {} });
@@ -74,6 +75,15 @@ return view.extend({
 				widget.nginxDefaultEmail = 'admin@' + domain.toLowerCase();
 				widget.setValue(widget.nginxDefaultEmail);
 			}
+		}
+
+		function refreshAcmeStatus(sectionId) {
+			return callAcmeStatus(sectionId).then(function(result) {
+				var text = result.output || result.error || _('Awaiting certificate');
+				Array.from(document.querySelectorAll('[data-nginx-acme-section]'))
+					.filter(function(node) { return node.getAttribute('data-nginx-acme-section') === sectionId; })
+					.forEach(function(node) { node.textContent = text; });
+			});
 		}
 
 		m = this.map = new form.Map('nginx_proxy', _('Nginx Proxy'));
@@ -181,13 +191,16 @@ return view.extend({
 		o.inputtitle = _('Request / check certificate');
 		o.inputstyle = 'action';
 		o.onclick = function(ev, sectionId) {
-			var modalMap = this.map;
+			var modalNode = document.querySelector('body.modal-overlay-active > #modal_overlay > .modal.cbi-modal > .cbi-map:not(.hidden)');
+			var modalMap = modalNode && dom.findClassInstance(modalNode);
+			if (!modalMap || modalMap.section !== sectionId) {
+				ui.addNotification(null, E('p', {}, _('Unable to find the active domain editor')), 'error');
+				return Promise.resolve();
+			}
+			var parentMap = modalMap.parent || page.map;
 			ui.addNotification(null, E('p', {}, _('Saving domain settings and starting the certificate check…')));
-			// GridSection's editor owns a separate map. Parse its inputs before applying.
-			return page.map.children[0].parse().then(function() {
-				return modalMap.save(null, true);
-			}).then(function() {
-				return page.map.load().then(L.bind(page.map.reset, page.map));
+			return modalMap.save(null, true).then(function() {
+				return parentMap.load().then(L.bind(parentMap.reset, parentMap));
 			}).then(function() {
 				return page.applyConfig();
 			}).then(function(applied) {
@@ -195,6 +208,7 @@ return view.extend({
 				return callAcmeStart(sectionId).then(function(result) {
 					if (!result.success) throw new Error(result.error);
 					ui.addNotification(null, E('p', {}, _('Certificate check started for this domain. Renewal runs daily.')));
+					return refreshAcmeStatus(sectionId);
 				});
 			}).catch(function(err) {
 				ui.addNotification(null, E('p', {}, err.message), 'error');
@@ -206,7 +220,7 @@ return view.extend({
 		o.depends('certificate_source', 'acme');
 		o.renderWidget = function(sectionId) {
 			return E('pre', { 'data-nginx-acme-section': sectionId, style: 'white-space:pre-wrap;overflow-wrap:anywhere' },
-				_('Save and apply this domain to view certificate status'));
+				_('Awaiting certificate'));
 		};
 
 		o = s.option(form.Button, '_pem', 'PEM');
@@ -231,9 +245,7 @@ return view.extend({
 		poll.add(function() {
 			return Promise.all(Array.from(document.querySelectorAll('[data-nginx-acme-section]')).map(function(node) {
 				var sectionId = node.getAttribute('data-nginx-acme-section');
-				return callAcmeStatus(sectionId).then(function(result) {
-					node.textContent = result.output || result.error || _('Awaiting certificate');
-				});
+				return refreshAcmeStatus(sectionId);
 			}));
 		}, 10);
 
