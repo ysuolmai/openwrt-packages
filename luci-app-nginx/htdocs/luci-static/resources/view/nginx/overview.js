@@ -6,7 +6,6 @@
 'require poll';
 'require ui';
 'require network';
-'require dom';
 
 var callStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'status', expect: {} });
 var callAcmeStatus = rpc.declare({ object: 'luci.nginx-proxy', method: 'acme_status', params: [ 'section' ], expect: {} });
@@ -191,12 +190,7 @@ return view.extend({
 		o.inputtitle = _('Request / check certificate');
 		o.inputstyle = 'action';
 		o.onclick = function(ev, sectionId) {
-			var modalNode = document.querySelector('body.modal-overlay-active > #modal_overlay > .modal.cbi-modal > .cbi-map:not(.hidden)');
-			var modalMap = modalNode && dom.findClassInstance(modalNode);
-			if (!modalMap || modalMap.section !== sectionId) {
-				ui.addNotification(null, E('p', {}, _('Unable to find the active domain editor')), 'error');
-				return Promise.resolve();
-			}
+			var modalMap = this.map;
 			var parentMap = modalMap.parent || page.map;
 			ui.addNotification(null, E('p', {}, _('Saving domain settings and starting the certificate check…')));
 			return modalMap.save(null, true).then(function() {

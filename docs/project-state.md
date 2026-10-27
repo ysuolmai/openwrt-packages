@@ -398,8 +398,17 @@ script using a harmless certificate hook. No real CA request was made.
 The nginx-proxy generator now falls back to the selected interface's actual
 IPv4 address when netifd reports no subnet, so externally managed networks
 (including ZeroTier) appear in the LuCI allow list. The domain editor's
-request button now locates and saves its active modal map directly, then
+request button saves its own active modal map directly, then
 applies the proxy config, starts the selected ACME request, and refreshes
 that modal's certificate status immediately. It no longer parses stale parent
 GridSection values before saving. Regression checks cover the ZeroTier
 interface fallback and the modal save, request and status-refresh sequence.
+
+
+### ACME editor button binding correction (release 12)
+
+Use the LuCI button option's own `map` reference for its cloned domain editor.
+This avoids depending on modal DOM selectors when saving and starting ACME.
+The UI regression test exercises direct modal-map save, config apply, scoped
+ACME start and immediate status refresh, and confirms an invalid modal save
+does not launch issuance.

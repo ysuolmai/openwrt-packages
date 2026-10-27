@@ -4,27 +4,15 @@ const fs = require('fs');
 const assert = require('assert');
 const calls = [];
 const values = { main: {}, site: { domain: 'app.example.org' } };
-let activeModalMap;
 let statusText = '';
-const modalNode = {};
 const statusNode = {
 	getAttribute: name => name === 'data-nginx-acme-section' ? 'site' : null,
 	set textContent(value) { statusText = value; }
 };
 const document = {
-	querySelector: selector => {
-		assert(selector.includes('#modal_overlay'));
-		return modalNode;
-	},
 	querySelectorAll: selector => {
 		assert.equal(selector, '[data-nginx-acme-section]');
 		return [statusNode];
-	}
-};
-const dom = {
-	findClassInstance: node => {
-		assert.equal(node, modalNode);
-		return activeModalMap;
 	}
 };
 const uci = {
@@ -58,8 +46,8 @@ const form = { Map };
 const ui = { addNotification() {} };
 const L = { bind: (fn, ctx, ...args) => fn.bind(ctx, ...args) };
 const code = fs.readFileSync(require('path').join(__dirname, '../htdocs/luci-static/resources/view/nginx/overview.js'), 'utf8');
-const page = new Function('view', 'form', 'uci', 'rpc', 'poll', 'ui', 'network', 'dom', 'L', 'E', '_', 'document', code)(
-	{ extend: object => object }, form, uci, rpc, { add() {} }, ui, {}, dom, L, () => ({}), s => s, document);
+const page = new Function('view', 'form', 'uci', 'rpc', 'poll', 'ui', 'network', 'L', 'E', '_', 'document', code)(
+	{ extend: object => object }, form, uci, rpc, { add() {} }, ui, {}, L, () => ({}), s => s, document);
 
 (async () => {
 	await page.render([null, [], { running: true }]);
@@ -86,7 +74,6 @@ const page = new Function('view', 'form', 'uci', 'rpc', 'poll', 'ui', 'network',
 		section: 'site',
 		save: async () => { calls.push('save-modal'); }
 	};
-	activeModalMap = modalMap;
 	calls.length = 0;
 	await button.onclick.call({ map: modalMap }, {}, 'site');
 	assert.deepEqual(calls, ['save-modal', 'load-parent', 'reset-parent',
