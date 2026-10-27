@@ -31,6 +31,10 @@ valid_port() {
 	[ "$1" -ge 1 ] && [ "$1" -le 65535 ]
 }
 
+valid_ipv4() {
+	echo "$1" | awk -F. 'NF != 4 { exit 1 } { for (i = 1; i <= 4; i++) if ($i !~ /^[0-9]+$/ || length($i) > 3 || ($i ~ /^0[0-9]+$/) || $i > 255) exit 1 }'
+}
+
 valid_domain() {
 	echo "$1" | grep -Eq '^(\*\.)?([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$'
 }
@@ -42,6 +46,12 @@ valid_backend() {
 valid_path() {
 	echo "$1" | grep -Eq '^/(etc/nginx-proxy|etc/acme|etc/ssl|etc/luci-uploads)/[A-Za-z0-9_./@+:-]+$' &&
 		[ -r "$1" ]
+}
+
+emit_deny_ip() {
+	local address="$1"
+	valid_ipv4 "$address" || fail "invalid LuCI deny IP address: $address"
+	echo "        deny $address;" >> "$ALLOW"
 }
 
 emit_allow_network() {
@@ -231,6 +241,7 @@ valid_port "$HTTP_PORT" || fail 'invalid management HTTP port'
 valid_port "$HTTPS_PORT" || fail 'invalid HTTPS port'
 [ "$HTTP_PORT" != "$HTTPS_PORT" ] || fail 'HTTP and HTTPS ports must differ'
 
+config_list_foreach main management_deny_ip emit_deny_ip
 config_list_foreach main management_network emit_allow_network
 [ -s "$ALLOW" ] || fail 'no address found for a management network'
 [ -s "$NAMES" ] || fail 'no IP address found for a management network'

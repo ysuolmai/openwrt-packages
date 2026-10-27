@@ -22,6 +22,9 @@ msgstr "已停止"
 msgid "LuCI management networks"
 msgstr "允许访问 LuCI 的网络"
 
+msgid "Blocked LuCI client IPv4 addresses"
+msgstr "禁止访问 LuCI 的客户端 IPv4 地址"
+
 msgid "HTTP port"
 msgstr "HTTP 端口"
 

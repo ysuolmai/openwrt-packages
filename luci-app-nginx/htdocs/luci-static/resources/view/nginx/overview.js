@@ -104,6 +104,9 @@ return view.extend({
 				o.value(net.getName(), net.getName());
 		});
 
+		o = s.option(form.DynamicList, 'management_deny_ip', _('Blocked LuCI client IPv4 addresses'));
+		o.datatype = 'ip4addr';
+
 		o = s.option(form.Value, 'management_http_port', _('HTTP port'));
 		o.datatype = 'port';
 		o.default = '80';

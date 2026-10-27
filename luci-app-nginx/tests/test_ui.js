@@ -51,6 +51,8 @@ const page = new Function('view', 'form', 'uci', 'rpc', 'poll', 'ui', 'network',
 
 (async () => {
 	await page.render([null, [], { running: true }]);
+	const blockedIps = page.map.lookupOption('management_deny_ip')[0];
+	assert.equal(blockedIps.datatype, 'ip4addr');
 	const email = page.map.lookupOption('acme_email')[0];
 	assert.equal(email.cfgvalue('site'), 'admin@app.example.org');
 	values.main.acme_email = 'legacy@example.org';

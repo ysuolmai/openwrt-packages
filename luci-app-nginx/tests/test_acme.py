@@ -40,12 +40,21 @@ network_flush_cache() { :; }
 '''
 
 
-def run_generator(directory, management_network=None, **opts):
+def run_generator(directory, management_network=None, management_deny_ip=None,
+                  management_https=False, **opts):
     main = {'management_http_port': 80}
     if management_network is None:
         main['management_network'] = ['lan']
     else:
         main['management_network'] = management_network
+    if management_deny_ip is not None:
+        main['management_deny_ip'] = management_deny_ip
+    if management_https:
+        main['management_https'] = 1
+        uploads = directory / 'uploads'
+        uploads.mkdir(exist_ok=True)
+        (uploads / 'main.cert.pem').symlink_to(directory / 'certs/app.example.org.fullchain.crt')
+        (uploads / 'main.key').symlink_to(directory / 'certs/app.example.org.key')
     config = {'main': main, 'site': {
         'domain': 'app.example.org', 'backend': '192.168.1.2', 'port': 3000,
         'certificate_source': 'acme', **opts}}
@@ -122,6 +131,12 @@ def test_generator(directory):
     assert 'allow 192.168.193.0/24;' in text
     assert 'server_name 192.168.193.151' in text
 
+    result, text = run_generator(directory, management_deny_ip=['172.28.1.199'])
+    assert result.returncode == 0, result.stderr
+    assert text.index('deny 172.28.1.199;') < text.index('allow 192.168.1.0/24;')
+    result, _ = run_generator(directory, management_deny_ip=['172.28.1.999'])
+    assert result.returncode != 0 and 'invalid LuCI deny IP address' in result.stderr
+
     check_nginx(directory, text, pending=True)
 
     certs = directory / 'certs'
@@ -137,6 +152,11 @@ def test_generator(directory):
     assert 'location / { return 308 https://$host:443$request_uri; }' in text
     assert 'location / { return 503; }' not in text
     check_nginx(directory, text, pending=False)
+    result, text = run_generator(directory, management_deny_ip=['172.28.1.199'],
+        management_https=True)
+    assert result.returncode == 0, result.stderr
+    assert text.count('deny 172.28.1.199;') == 2
+    assert text.count('allow 192.168.1.0/24;') == 2
     result, text = run_generator(directory, domain='APP.EXAMPLE.ORG')
     assert result.returncode == 0 and 'listen 443 ssl;' in text
 
@@ -159,7 +179,7 @@ def test_generator(directory):
     assert result.returncode == 0, result.stderr
     assert 'listen 8081;' in text and 'listen 443 ssl;' in text
     uploads = directory / 'uploads'
-    uploads.mkdir()
+    uploads.mkdir(exist_ok=True)
     (uploads / 'site_old.cert.pem').symlink_to(certs / 'app.example.org.fullchain.crt')
     (uploads / 'site_old.key').symlink_to(certs / 'app.example.org.key')
     result, text = run_generator(directory, certificate_source=None, cert_id='site_old')

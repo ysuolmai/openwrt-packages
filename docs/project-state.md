@@ -1,6 +1,6 @@
 # Project state
 
-Last updated: 2026-07-22
+Last updated: 2026-10-27
 
 ## Purpose
 
@@ -95,6 +95,11 @@ and returns HTTP 200 through HTTPS. Router-IP requests still reach LuCI, while
 an unconfigured Host is closed with nginx status 444 instead of displaying an
 nginx error page. Both PEM and KEY uploads were exercised through the rpcd
 method, and the generated nginx configuration and service state passed checks.
+
+The nginx-proxy management allow list supports explicit blocked IPv4 clients.
+On `172.28.1.1`, `172.28.1.199` is blocked from LuCI while other clients in
+the configured management networks remain allowed. The deny entry is emitted
+before network allow rules so nginx applies it before the containing subnet.
 
 ## HomeProxy decision
 
